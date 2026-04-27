@@ -1,3 +1,4 @@
+
 const API = 'http://localhost:8000';
 
 let users = [
@@ -296,7 +297,6 @@ async function typeWriter(text, elementId, speed = 15) {
         i++;
         setTimeout(type, speed);
       } else {
-        el.innerHTML += '<span class="typing-cursor"></span>';
         resolve();
       }
     }
@@ -309,25 +309,25 @@ function renderClaudeResult(d) {
   const ozEl = document.getElementById('aiOzet');
   if(!mainEl || !ozEl) return;
   
-  ozEl.innerHTML = `<span style="color:#38bdf8">✨ AI:</span> ${d.ozet}`;
+  ozEl.innerHTML = `<span style="color:#38bdf8; font-weight:700;">✨ Claude AI:</span> ${d.ozet}`;
 
   const risks = (d.acil_siparisler || []).map(s => `• ${s.urun}: ${s.neden}`).join('<br>');
   const actions = (d.aylik_tedarik || []).slice(0,3).map(t => `• ${t.malzeme} tedariği planla.`).join('<br>');
 
   mainEl.innerHTML = `
-    <div id="aiMainText" style="margin-bottom:20px; font-weight:600; font-size:15px; color:#e0f2fe; line-height:1.7;">
+    <div id="aiMainText" style="margin-bottom:20px; font-weight:500; font-size:15px; color:#f1f5f9; line-height:1.7; background: rgba(56, 189, 248, 0.05); padding: 15px; border-radius: 10px; border: 1px solid rgba(56, 189, 248, 0.1);">
       ${d.ozet}
     </div>
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-      <div class="ai-insight-card" style="border-color: var(--red); background: rgba(248,81,73,0.03);">
-        <div class="ai-insight-label">🚨 Kritik Riskler</div>
-        <div id="aiRisks" style="font-size:13px; color:var(--text2); font-weight:500;">
+      <div class="ai-insight-card" style="border-color: #ef4444; background: rgba(239, 68, 68, 0.03); border-radius: 12px;">
+        <div class="ai-insight-label" style="color:#ef4444">🚨 Kritik Riskler</div>
+        <div id="aiRisks" style="font-size:13px; color:#cbd5e1; font-weight:400; line-height:1.5;">
           ${risks || 'Kritik bir risk saptanmadı.'}
         </div>
       </div>
-      <div class="ai-insight-card" style="border-color: var(--green); background: rgba(63,185,80,0.03);">
-        <div class="ai-insight-label">💡 Stratejik Öneriler</div>
-        <div id="aiActions" style="font-size:13px; color:var(--text2); font-weight:500;">
+      <div class="ai-insight-card" style="border-color: #22c55e; background: rgba(34, 197, 94, 0.03); border-radius: 12px;">
+        <div class="ai-insight-label" style="color:#22c55e">💡 Stratejik Öneriler</div>
+        <div id="aiActions" style="font-size:13px; color:#cbd5e1; font-weight:400; line-height:1.5;">
           ${actions || 'Mevcut plan stabil görünüyor.'}
         </div>
       </div>
