@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StokZeka AI - Akıllı Stok Yönetimi</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- LOGIN PAGE -->
+<div id="loginPage" class="login-wrap">
+  <div class="login-card">
+    <div class="login-logo">
+      <div style="font-size:32px;margin-bottom:8px;">☕</div>
+      <div class="login-title">StokZeka AI</div>
+      <div class="login-sub">Yapay Zeka Destekli Stok Yönetimi</div>
+    </div>
+    <label>Kullanıcı Seç</label>
+    <div id="userList" class="user-selector">
+      <!-- Kullanıcılar JS ile buraya gelecek -->
+    </div>
+    <div style="margin-bottom:12px;">
+      <label>Şifre</label>
+      <input type="password" id="loginPwd" placeholder="••••••••" value="1234" />
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="doLogin()">Giriş Yap →</button>
+    <button class="btn" style="width:100%;margin-top:8px;background:transparent;border:none;color:var(--text3)" onclick="showRegister()">Yeni Kullanıcı Oluştur</button>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--text3)">Demo: Şifre <strong style="color:var(--text2)">1234</strong></div>
+  </div>
+</div>
+
+<!-- REGISTER PAGE -->
+<div id="registerPage" class="login-wrap" style="display:none">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-title">Yeni Kullanıcı Kaydı</div>
+      <div class="login-sub">Ekibinize yeni bir üye ekleyin</div>
+    </div>
+    <div class="form-row">
+      <div><label>Ad Soyad</label><input type="text" id="regName" placeholder="Örn: Ali Yılmaz"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Rol</label>
+        <select id="regRole">
+          <option value="Yönetici">Yönetici</option>
+          <option value="Şef Barista">Şef Barista</option>
+          <option value="Stok Sorumlusu">Stok Sorumlusu</option>
+          <option value="Kasiyer">Kasiyer</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Avatar/İkon</label>
+        <select id="regIcon">
+          <option value="👨‍💼">👨‍💼 Yönetici</option>
+          <option value="👩‍🍳">👩‍🍳 Şef</option>
+          <option value="📦">📦 Lojistik</option>
+          <option value="💳">💳 Kasa</option>
+          <option value="🧔">🧔 Personel 1</option>
+          <option value="👩">👩 Personel 2</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Renk Teması</label>
+        <select id="regColor">
+          <option value="#1f6feb">Mavi</option>
+          <option value="#39d353">Yeşil</option>
+          <option value="#e3b341">Sarı</option>
+          <option value="#f85149">Kırmızı</option>
+          <option value="#a371f7">Mor</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label>Şifre Belirle</label>
+      <input type="password" id="regPwd" placeholder="••••••••" value="1234" />
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="doRegister()">Kaydı Tamamla ✓</button>
+    <button class="btn" style="width:100%;margin-top:8px;background:transparent;border:none;color:var(--text3)" onclick="hideRegister()">Vazgeç</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" class="app" style="display:none">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-text"><span class="logo-dot"></span>StokZeka</div>
+      <div class="logo-sub">AI Dashboard v2.0</div>
+    </div>
+    <div class="user-badge" id="sidebarUser">
+      <div class="user-avatar" id="avatarEl" style="background:rgba(31,111,235,0.2);color:#58a6ff;">AK</div>
+      <div>
+        <div class="user-name" id="userNameEl">Ahmet Kaya</div>
+        <div class="user-role" id="userRoleEl">Yönetici</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">Ana Menü</div>
+      <div class="nav-item active" onclick="showPage('dashboard')"><span class="ni">📊</span> Dashboard</div>
+      <div class="nav-item" onclick="showPage('stok')"><span class="ni">📦</span> Stok Durumu <span class="nav-badge" id="kritikBadge">0</span></div>
+      <div class="nav-item" onclick="showPage('urunler')"><span class="ni">☕</span> Ürünler</div>
+      
+      <div class="nav-section">Yapay Zeka</div>
+      <div class="nav-item" onclick="showPage('ai')"><span class="ni">🤖</span> AI Analiz</div>
+      <div class="nav-item" onclick="showPage('tahmin')"><span class="ni">📈</span> Tahminler</div>
+      
+      <div class="nav-section">Operasyon</div>
+      <div class="nav-item" onclick="showPage('satis')"><span class="ni">💰</span> Satış Kaydet</div>
+      <div class="nav-item" onclick="showPage('tarifler')"><span class="ni">📋</span> Tarifler</div>
+
+      <!-- SADECE YÖNETİCİYE ÖZEL BÖLÜM -->
+      <div id="adminMenu" style="display:none">
+        <div class="nav-section" style="color:var(--orange)">⚠️ Yönetici Özel</div>
+        <div class="nav-item" onclick="showPage('personel')"><span class="ni">👥</span> Personel Yönetimi</div>
+        <div class="nav-item" onclick="showPage('yukle')"><span class="ni">📤</span> Veri Yükle (Toplu)</div>
+        <div class="nav-item" onclick="showPage('finans')"><span class="ni">💸</span> Kar/Zarar Analizi</div>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="logout-btn" onclick="doLogout()">⬅ Çıkış Yap</div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+
+    <!-- PERSONEL YÖNETİMİ (SADECE ADMIN) -->
+    <div id="page-personel" class="page">
+      <div class="page-header">
+        <div><div class="page-title">👥 Personel Yönetimi</div><div class="page-sub">Sisteme kayıtlı kullanıcıları yönetin</div></div>
+        <button class="btn btn-primary" onclick="showRegister()">+ Yeni Personel Ekle</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>İsim</th><th>Rol</th><th>Renk</th><th>Durum</th><th>İşlem</th></tr></thead>
+            <tbody id="personelTable">
+              <!-- JS ile dolacak -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- FİNANSAL ANALİZ (SADECE ADMIN) -->
+    <div id="page-finans" class="page">
+      <div class="page-header">
+        <div><div class="page-title">💸 Finansal Analiz</div><div class="page-sub">Tahmini maliyet ve kar raporları</div></div>
+      </div>
+      <div class="grid-3">
+        <div class="card metric-green"><div class="card-title">Aylık Tahmini Ciro</div><div class="card-value">142.500 TL</div></div>
+        <div class="card metric-blue"><div class="card-title">Malzeme Maliyeti</div><div class="card-value">48.200 TL</div></div>
+        <div class="card metric-amber"><div class="card-title">Brüt Kar Marjı</div><div class="card-value">%66</div></div>
+      </div>
+      <div class="card">
+        <div style="font-size:14px;font-weight:500;margin-bottom:12px">Ürün Bazlı Kar Analizi</div>
+        <div id="karAnalizList" class="scrollable">
+          <div style="color:var(--text3)">Veriler hesaplanıyor...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub" id="dashDate">Bugün yükleniyor...</div>
+        </div>
+        <button class="btn btn-primary" onclick="runAI()">🤖 AI Analiz Başlat</button>
+      </div>
+      <div class="grid-4" id="metricCards">
+        <div class="card metric-blue"><div class="card-title">Toplam Ürün</div><div class="card-value" id="mToplam">-</div><div class="card-sub">aktif ürün</div></div>
+        <div class="card metric-red"><div class="card-title">Kritik Stok</div><div class="card-value" id="mKritik" style="color:var(--red)">-</div><div class="card-sub">acil sipariş gerek</div></div>
+        <div class="card metric-amber"><div class="card-title">Düşük Stok</div><div class="card-value" id="mDusuk" style="color:var(--amber)">-</div><div class="card-sub">takip et</div></div>
+        <div class="card metric-green"><div class="card-title">Yeterli Stok</div><div class="card-value" id="mYeterli" style="color:var(--green)">-</div><div class="card-sub">stabil</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <div style="font-size:14px;font-weight:500">Kritik Stok Uyarıları</div>
+            <span class="badge badge-red" id="uyariBadge">0 ürün</span>
+          </div>
+          <div id="uyariListesi" class="scrollable"><div style="color:var(--text3);font-size:13px">Yükleniyor...</div></div>
+        </div>
+        <div class="card">
+          <div style="font-size:14px;font-weight:500;margin-bottom:14px">Stok Dağılımı</div>
+          <div class="chart-wrap"><canvas id="stokChart" role="img" aria-label="Stok durumu pasta grafiği">Stok dağılım grafiği</canvas></div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:14px;font-weight:500;margin-bottom:14px">AI Yönetici Özeti</div>
+        <div id="aiOzet" class="ai-loading"><span class="pulse"></span> Analiz için üstteki butona basın...</div>
+      </div>
+    </div>
+
+    <!-- STOK SAYFASI -->
+    <div id="page-stok" class="page">
+      <div class="page-header">
+        <div><div class="page-title">Stok Durumu</div><div class="page-sub">Tüm ürünlerin anlık stok seviyeleri</div></div>
+        <input type="text" id="stokSearch" placeholder="🔍 Ürün ara..." style="width:220px" oninput="filterStok(this.value)">
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Ürün</th><th>Mevcut Stok</th><th>Kritik Eşik</th><th>Doluluk</th><th>Durum</th><th>Tedarikçi</th><th>Tedarik (gün)</th>
+            </tr></thead>
+            <tbody id="stokTable"><tr><td colspan="7" style="color:var(--text3)">Yükleniyor...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ÜRÜNLER -->
+    <div id="page-urunler" class="page">
+      <div class="page-header">
+        <div><div class="page-title">Ürünler & Üretebileceklerim</div><div class="page-sub">Mevcut stokla üretilebilecek maksimum porsiyon</div></div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <div style="font-size:14px;font-weight:500;margin-bottom:12px">📦 Stokla Üretilebilecek Ürünler (Tarife Göre)</div>
+        <div id="uretimGrid" class="forecast-grid">Yükleniyor...</div>
+      </div>
+    </div>
+
+    <!-- AI ANALİZ -->
+    <div id="page-ai" class="page">
+      <div class="page-header">
+        <div><div class="page-title">🤖 Yapay Zeka Analizi</div><div class="page-sub">Claude AI ile stok ve satış analizi</div></div>
+        <button class="btn btn-primary" onclick="runAI()">▶ Analizi Çalıştır</button>
+      </div>
+      <div class="ai-panel" id="aiMainPanel">
+        <div class="ai-header">
+          <div class="ai-icon">🤖</div>
+          <div><div class="ai-title">Claude AI Analiz Motoru</div><div class="ai-sub">Gerçek zamanlı tahmin ve sipariş önerileri</div></div>
+        </div>
+        <div id="aiOutputMain" class="ai-content"><div class="ai-loading"><span class="pulse"></span> Analiz başlatmak için "Analizi Çalıştır" butonuna basın...</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card" id="sipOneriler">
+          <div style="font-size:14px;font-weight:500;margin-bottom:12px">🚚 Sipariş Önerileri</div>
+          <div id="sipListesi" style="color:var(--text3);font-size:13px">Analiz bekleniyor...</div>
+        </div>
+        <div class="card">
+          <div style="font-size:14px;font-weight:500;margin-bottom:12px">⚠️ Uyarılar</div>
+          <div id="uyariDetay" style="color:var(--text3);font-size:13px">Analiz bekleniyor...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAHMİN -->
+    <div id="page-tahmin" class="page">
+      <div class="page-header">
+        <div><div class="page-title">📈 Bu Hafta Tahminleri</div><div class="page-sub">AI ile haftalık satış ve malzeme tahmini</div></div>
+        <button class="btn btn-primary" onclick="runTahmin()">🔮 Tahmin Hesapla</button>
+      </div>
+      <div id="tahminContent">
+        <div class="card" style="margin-bottom:16px">
+          <div style="font-size:14px;font-weight:500;margin-bottom:12px">Haftalık Satış Tahmini (AI)</div>
+          <div id="tahminGrid" class="forecast-grid"><div style="color:var(--text3)">Tahmin için butona basın...</div></div>
+        </div>
+        <div class="card">
+          <div style="font-size:14px;font-weight:500;margin-bottom:12px">Bu Hafta Tahmini Malzeme İhtiyacı</div>
+          <div id="malzemeHafta"><div style="color:var(--text3);font-size:13px">Tahmin yükleniyor...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MALZEME TÜKETİMİ -->
+    <div id="page-malzeme" class="page">
+      <div class="page-header">
+        <div><div class="page-title">🧪 Aylık Malzeme Tüketimi</div><div class="page-sub">Tarif × Satış = Gerçek hammadde tüketimi</div></div>
+        <select id="malzemeDon" style="width:160px" onchange="loadMalzeme()">
+          <option value="30">Son 30 gün</option>
+          <option value="60">Son 60 gün</option>
+          <option value="90">Son 90 gün</option>
+        </select>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div style="font-size:14px;font-weight:500;margin-bottom:12px">En Çok Tüketilen Malzemeler</div>
+          <div class="chart-wrap" style="height:280px"><canvas id="malzemeChart" role="img" aria-label="Malzeme tüketim grafiği">Malzeme tüketim verileri</canvas></div>
+        </div>
+        <div class="card">
+          <div style="font-size:14px;font-weight:500;margin-bottom:12px">Detaylı Tüketim Listesi</div>
+          <div class="scrollable" id="malzemeTable"><div style="color:var(--text3)">Yükleniyor...</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:14px;font-weight:500;margin-bottom:12px">📅 Aylık Tedarik Edilmesi Gerekenler (AI Öneri)</div>
+        <div id="aylikTedarik" style="color:var(--text3);font-size:13px">Yükleniyor...</div>
+      </div>
+    </div>
+
+    <!-- SATIŞ KAYDET -->
+    <div id="page-satis" class="page">
+      <div class="page-header">
+        <div><div class="page-title">💰 Satış Kaydet</div><div class="page-sub">Günlük satış ve stok girişi</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div style="font-size:14px;font-weight:500;margin-bottom:16px">Satış Girişi</div>
+          <div class="form-row" style="grid-template-columns:1fr 1fr">
+            <div><label>Tarih</label><input type="date" id="satisTarih"></div>
+            <div><label>Ürün</label>
+              <select id="satisUrun"><option>Yükleniyor...</option></select>
+            </div>
+          </div>
+          <div class="form-row" style="grid-template-columns:1fr 1fr">
+            <div><label>Adet</label><input type="number" id="satisAdet" min="1" value="1"></div>
+            <div><label>Birim Fiyat (TL)</label><input type="number" id="satisFiyat" min="0" step="0.5" value="75"></div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="kaydetSatis()">Satışı Kaydet ✓</button>
+          <div id="satisResult" style="margin-top:12px;font-size:13px;color:var(--green);display:none"></div>
+        </div>
+        <div class="card">
+          <div style="font-size:14px;font-weight:500;margin-bottom:16px">Stok Girişi</div>
+          <div class="form-row" style="grid-template-columns:1fr 1fr">
+            <div><label>Tarih</label><input type="date" id="stokTarih"></div>
+            <div><label>Ürün</label><select id="stokGirisUrun"><option>Yükleniyor...</option></select></div>
+          </div>
+          <div class="form-row" style="grid-template-columns:1fr 1fr">
+            <div><label>Miktar</label><input type="number" id="stokMiktar" min="1" value="100"></div>
+            <div><label>İşlem Tipi</label>
+              <select id="stokTip">
+                <option value="Giris">Giriş</option>
+                <option value="Iade">İade</option>
+                <option value="Fire">Fire</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="kaydetStok()">Stok Girişini Kaydet ✓</button>
+          <div id="stokResult" style="margin-top:12px;font-size:13px;color:var(--green);display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VERİ YÜKLE -->
+    <div id="page-yukle" class="page">
+      <div class="page-header">
+        <div><div class="page-title">📤 Veri Yükle</div><div class="page-sub">CSV veya Excel formatında güncel veriler yükleyin</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div style="font-size:14px;font-weight:500;margin-bottom:16px">Satış Verisi Yükle (CSV)</div>
+          <div class="upload-zone" onclick="document.getElementById('csvSatis').click()">
+            <div class="upload-icon">📊</div>
+            <div style="font-size:14px;font-weight:500;margin-bottom:4px">CSV Dosyası Seç</div>
+            <div style="font-size:12px;color:var(--text3)">tarih, urun_id, adet, fiyat sütunları</div>
+          </div>
+          <input type="file" id="csvSatis" accept=".csv" style="display:none" onchange="handleCSV(this,'satis')">
+          <div id="csvSatisResult" style="margin-top:12px;font-size:13px;display:none"></div>
+        </div>
+        <div class="card">
+          <div style="font-size:14px;font-weight:500;margin-bottom:16px">Stok Hareketi Yükle (CSV)</div>
+          <div class="upload-zone" onclick="document.getElementById('csvStok').click()">
+            <div class="upload-icon">📦</div>
+            <div style="font-size:14px;font-weight:500;margin-bottom:4px">CSV Dosyası Seç</div>
+            <div style="font-size:12px;color:var(--text3)">tarih, urun_id, miktar, islem_tipi</div>
+          </div>
+          <input type="file" id="csvStok" accept=".csv" style="display:none" onchange="handleCSV(this,'stok')">
+          <div id="csvStokResult" style="margin-top:12px;font-size:13px;display:none"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:14px;font-weight:500;margin-bottom:12px">📋 CSV Format Şablonu</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:6px">Satış CSV formatı:</div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:11px;font-family:monospace;color:var(--cyan)">
+              tarih,urun_id,adet,birim_fiyat<br>
+              2026-04-27,P001,45,25<br>
+              2026-04-27,P003,23,75
+            </div>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:6px">Stok hareketi CSV formatı:</div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:11px;font-family:monospace;color:var(--cyan)">
+              tarih,urun_id,miktar,islem_tipi<br>
+              2026-04-27,P001,200,Giris<br>
+              2026-04-27,P005,50,Giris
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TARİFLER -->
+    <div id="page-tarifler" class="page">
+      <div class="page-header">
+        <div><div class="page-title">📋 Tarif Kitabı</div><div class="page-sub">1 porsiyon başına malzeme tüketimi</div></div>
+        <input type="text" placeholder="🔍 Tarif ara..." style="width:200px" oninput="filterTarifler(this.value)">
+      </div>
+      <div id="tarifGrid" class="recipe-grid">Yükleniyor...</div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
