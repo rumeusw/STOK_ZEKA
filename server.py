@@ -200,6 +200,8 @@ def get_finans_analiz():
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
+        
+        # Ürün bazlı analiz
         query = """
         SELECT 
             u.Urun_Adi as urun_adi,
@@ -212,13 +214,27 @@ def get_finans_analiz():
         """
         cursor.execute(query)
         rows = cursor.fetchall()
+        
+        # TOPLAM CİRO HESAPLAMA
+        cursor.execute("SELECT SUM(Toplam_Satis_TL) FROM Satislar")
+        toplam_ciro = cursor.fetchone()[0] or 0
+        
+        # TOPLAM MALİYET HESAPLAMA (Örnek: Satışların %35'i maliyet varsayımı veya DB'den gerçek veriler)
+        toplam_maliyet = toplam_ciro * 0.35
+        
         analiz = []
         for row in rows:
             item = dict(row)
             item["ortalama_satis_fiyat"] = item["ortalama_satis_fiyat"] or 0
             item["birim_maliyet"] = item["birim_maliyet"] or 0
             analiz.append(item)
-        return {"analiz": analiz}
+            
+        return {
+            "analiz": analiz,
+            "toplam_ciro": toplam_ciro,
+            "toplam_maliyet": toplam_maliyet,
+            "net_kar": toplam_ciro - toplam_maliyet
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

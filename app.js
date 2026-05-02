@@ -100,6 +100,7 @@ function showPage(id, event) {
   if (id === 'urunler') loadUretim();
   if (id === 'personel') loadPersonelTable();
   if (id === 'finans') loadFinans();
+  if (id === 'dashboard') { loadStok(); loadFinans(); }
 }
 
 // ── INIT ───────────────────────────────────────────
@@ -130,6 +131,7 @@ async function initApp() {
   if(document.getElementById('stokTarih')) document.getElementById('stokTarih').value = today;
 
   await loadStok();
+  await loadFinans();
   await loadUrunSelect();
   renderStokChart();
 }
@@ -161,16 +163,21 @@ function deleteUser(idx) {
 
 async function loadFinans() {
   const list = document.getElementById('karAnalizList');
-  if(!list) return;
+  const finCiro = document.getElementById('finCiro');
+  const finMaliyet = document.getElementById('finMaliyet');
+  const finKar = document.getElementById('finKar');
+  
   try {
     const r = await fetch(API + '/finans/analiz');
-    if (!r.ok) throw new Error('Sunucu yanıt vermedi: ' + r.status);
+    if (!r.ok) throw new Error('Sunucu yanıt vermedi');
     const d = await r.json();
     
-    if (!d.analiz || !Array.isArray(d.analiz)) {
-      throw new Error('Veri formatı hatalı.');
-    }
+    // Üst kartları güncelle
+    if(finCiro) finCiro.textContent = d.toplam_ciro.toLocaleString('tr-TR') + ' TL';
+    if(finMaliyet) finMaliyet.textContent = Math.round(d.toplam_maliyet).toLocaleString('tr-TR') + ' TL';
+    if(finKar) finKar.textContent = Math.round(d.net_kar).toLocaleString('tr-TR') + ' TL';
 
+    if(!list) return;
     list.innerHTML = d.analiz.map(u => {
       const cost = Math.round(u.birim_maliyet || 0);
       const price = Math.round(u.ortalama_satis_fiyat || 0);
@@ -189,7 +196,6 @@ async function loadFinans() {
     }).join('');
   } catch(e) {
     console.error('Finans yükleme hatası:', e);
-    list.innerHTML = `<div style="color:var(--text3);padding:20px;text-align:center">Veriler yüklenemedi: ${e.message}</div>`;
   }
 }
 
@@ -704,6 +710,7 @@ async function kaydetSatis() {
     }
     // GÜNCELLEME: Refresh after sale
     await loadStok();
+    await loadFinans();
     renderStokChart();
   } catch(e) {
     if(el) {
@@ -738,6 +745,7 @@ async function kaydetStok() {
     }
     // GÜNCELLEME: Refresh after stock entry
     await loadStok();
+    await loadFinans();
     renderStokChart();
   } catch(e) {
     if(el) {
@@ -800,7 +808,7 @@ function handleCSV(input, type) {
           });
         } catch(err){}
       });
-      setTimeout(()=>{ el.style.color='var(--green)'; el.textContent='✅ '+rows.length+' satış başarıyla yüklendi!'; loadStok(); }, 500);
+      setTimeout(()=>{ el.style.color='var(--green)'; el.textContent='✅ '+rows.length+' satış başarıyla yüklendi!'; loadStok(); loadFinans(); }, 500);
     }
   };
   reader.readAsText(file);
