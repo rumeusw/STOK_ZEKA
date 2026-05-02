@@ -602,7 +602,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
-const API = 'http://localhost:8000';
+const API = '';
 
 let users = [
   { name: 'Ahmet Kaya', role: 'Yönetici', color: '#1f6feb', icon: '👨‍💼', pwd: '1234' },
@@ -751,23 +751,37 @@ function deleteUser(idx) {
   }
 }
 
-function loadFinans() {
+async function loadFinans() {
   const list = document.getElementById('karAnalizList');
-  list.innerHTML = stokData.map(u => {
-    const cost = Math.round(Math.random() * 20 + 15);
-    const price = Math.round(cost * 2.8);
-    return `
-      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
-        <div>
-          <div style="font-weight:500">${u.urun_adi}</div>
-          <div style="font-size:11px;color:var(--text3)">Birim Maliyet: ${cost} TL | Satış: ${price} TL</div>
-        </div>
-        <div style="text-align:right">
-          <div style="color:var(--green);font-weight:600">+${price-cost} TL</div>
-          <div style="font-size:10px;color:var(--text3)">Birim Kar</div>
-        </div>
-      </div>`;
-  }).join('');
+  try {
+    const r = await fetch(API + '/finans/analiz');
+    if (!r.ok) throw new Error('Sunucu yanıt vermedi: ' + r.status);
+    const d = await r.json();
+    
+    if (!d.analiz || !Array.isArray(d.analiz)) {
+      throw new Error('Veri formatı hatalı.');
+    }
+
+    list.innerHTML = d.analiz.map(u => {
+      const cost = Math.round(u.birim_maliyet || 0);
+      const price = Math.round(u.ortalama_satis_fiyat || 0);
+      const profit = price - cost;
+      return `
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-weight:500">${u.urun_adi || 'Bilinmeyen Ürün'}</div>
+            <div style="font-size:11px;color:var(--text3)">Birim Maliyet: ${cost} TL | Satış: ${price} TL</div>
+          </div>
+          <div style="text-align:right">
+            <div style="color:${profit >= 0 ? 'var(--green)' : 'var(--red)'};font-weight:600">${profit >= 0 ? '+' : ''}${profit} TL</div>
+            <div style="font-size:10px;color:var(--text3)">Birim Kar</div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    console.error('Finans yükleme hatası:', e);
+    list.innerHTML = `<div style="color:var(--text3);padding:20px;text-align:center">Veriler yüklenemedi: ${e.message}</div>`;
+  }
 }
 
 // Sayfa yüklendiğinde kullanıcıları listele
@@ -1203,18 +1217,34 @@ async function loadTarifler() {
     "Latte": {"Espresso Çekirdeği (g)": "18 g", "Süt (ml)": "200 ml", "Bardak (M)": "1 adet"},
     "Ice Latte": {"Espresso Çekirdeği (g)": "18 g", "Süt (ml)": "180 ml", "Buz (g)": "80 g", "Bardak (L)": "1 adet"},
     "Americano": {"Espresso Çekirdeği (g)": "18 g", "Su (ml)": "180 ml", "Bardak (M)": "1 adet"},
+    "Ice Americano": {"Espresso Çekirdeği (g)": "18 g", "Su (ml)": "150 ml", "Buz (g)": "100 g", "Bardak (L)": "1 adet"},
     "Cappuccino": {"Espresso Çekirdeği (g)": "18 g", "Süt (ml)": "120 ml", "Bardak (M)": "1 adet"},
     "Limonata": {"Limon (adet)": "1.5 adet", "Şeker (g)": "20 g", "Su (ml)": "250 ml", "Buz (g)": "60 g"},
+    "Espresso": {"Espresso Çekirdeği (g)": "18 g", "Fincan": "1 adet"},
+    "Filtre Kahve": {"Filtre Kahve Tozu (g)": "15 g", "Su (ml)": "250 ml", "Bardak (M)": "1 adet"},
     "Mocha": {"Espresso Çekirdeği (g)": "18 g", "Süt (ml)": "180 ml", "Çikolata Sosu (ml)": "20 ml"},
-    "Kruvasan": {"Kruvasan Hamuru (g)": "80 g", "Tereyağı (g)": "20 g"},
-    "Tiramisu": {"Maskarpone (g)": "50 g", "Bisküvi (g)": "30 g", "Espresso Çekirdeği (g)": "5 g"},
-    "Brownie": {"Çikolata (g)": "40 g", "Tereyağı (g)": "30 g", "Un (g)": "20 g", "Yumurta (adet)": "0.5 adet"},
-    "San Sebastian": {"Krem Peynir (g)": "60 g", "Yumurta (adet)": "0.5 adet", "Krema (ml)": "40 ml"},
-    "Flat White": {"Espresso Çekirdeği (g)": "18 g", "Süt (ml)": "130 ml"},
-    "Salep": {"Salep Tozu (g)": "8 g", "Süt (ml)": "200 ml", "Tarçın (g)": "1 g"},
+    "Menengiç Kahvesi": {"Menengiç (g)": "10 g", "Süt (ml)": "80 ml", "Fincan": "1 adet"},
     "Sıcak Çikolata": {"Kakao Tozu (g)": "20 g", "Süt (ml)": "200 ml", "Şeker (g)": "10 g"},
+    "Salep": {"Salep Tozu (g)": "8 g", "Süt (ml)": "200 ml", "Tarçın (g)": "1 g"},
+    "Flat White": {"Espresso Çekirdeği (g)": "18 g", "Süt (ml)": "130 ml"},
+    "Cortado": {"Espresso Çekirdeği (g)": "18 g", "Süt (ml)": "30 ml", "Fincan": "1 adet"},
+    "Chai Tea Latte": {"Chai Mix (g)": "15 g", "Süt (ml)": "200 ml", "Tarçın (g)": "0.5 g"},
+    "Kış Çayı": {"Bitki Mix (g)": "5 g", "Bal (ml)": "10 ml", "Su (ml)": "250 ml", "Limon (dilim)": "1 adet"},
+    "Soğuk Çay": {"Çay Özü (ml)": "30 ml", "Su (ml)": "200 ml", "Buz (g)": "100 g", "Şurup (ml)": "10 ml"},
     "Frappe": {"Filtre Kahve Tozu (g)": "10 g", "Süt (ml)": "100 ml", "Buz (g)": "150 g"},
     "Milkshake": {"Süt (ml)": "200 ml", "Dondurma (g)": "100 g", "Şeker (g)": "10 g"},
+    "Iced Mocha": {"Espresso Çekirdeği (g)": "18 g", "Süt (ml)": "150 ml", "Çikolata Sosu (ml)": "20 ml", "Buz (g)": "100 g"},
+    "Portakal Suyu": {"Portakal (adet)": "3 adet", "Bardak (M)": "1 adet"},
+    "Churchill": {"Soda (ml)": "200 ml", "Limon (adet)": "0.5 adet", "Tuz (g)": "1 g"},
+    "Frozen": {"Meyve Özü (ml)": "50 ml", "Buz (g)": "200 g", "Şurup (ml)": "20 ml"},
+    "San Sebastian": {"Krem Peynir (g)": "60 g", "Yumurta (adet)": "0.5 adet", "Krema (ml)": "40 ml"},
+    "Tiramisu": {"Maskarpone (g)": "50 g", "Bisküvi (g)": "30 g", "Espresso Çekirdeği (g)": "5 g"},
+    "Brownie": {"Çikolata (g)": "40 g", "Tereyağı (g)": "30 g", "Un (g)": "20 g", "Yumurta (adet)": "0.5 adet"},
+    "Havuçlu Tarçınlı Kek": {"Havuç (g)": "30 g", "Un (g)": "40 g", "Tarçın (g)": "2 g", "Ceviz (g)": "5 g"},
+    "Sufle": {"Çikolata (g)": "50 g", "Un (g)": "15 g", "Yumurta (adet)": "1 adet"},
+    "Çikolatalı Cookie": {"Hamur (g)": "60 g", "Çikolata Parçacığı (g)": "15 g"},
+    "Kruvasan": {"Kruvasan Hamuru (g)": "80 g", "Tereyağı (g)": "20 g"},
+    "Profiterol": {"Hamur (g)": "30 g", "Krema (g)": "40 g", "Çikolata Sosu (g)": "30 g"},
   };
   tariflerData = RECIPE_BOOK;
   renderTarifler(RECIPE_BOOK);

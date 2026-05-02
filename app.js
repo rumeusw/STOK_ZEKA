@@ -1,5 +1,5 @@
 
-const API = 'http://localhost:8000';
+const API = '';
 
 let users = [
   { name: 'Ahmet Kaya', role: 'Yönetici', color: '#1f6feb', icon: '👨‍💼', pwd: '1234' },
@@ -149,23 +149,37 @@ function deleteUser(idx) {
   }
 }
 
-function loadFinans() {
+async function loadFinans() {
   const list = document.getElementById('karAnalizList');
-  list.innerHTML = stokData.map(u => {
-    const cost = Math.round(Math.random() * 20 + 15);
-    const price = Math.round(cost * 2.8);
-    return `
-      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
-        <div>
-          <div style="font-weight:500">${u.urun_adi}</div>
-          <div style="font-size:11px;color:var(--text3)">Birim Maliyet: ${cost} TL | Satış: ${price} TL</div>
-        </div>
-        <div style="text-align:right">
-          <div style="color:var(--green);font-weight:600">+${price-cost} TL</div>
-          <div style="font-size:10px;color:var(--text3)">Birim Kar</div>
-        </div>
-      </div>`;
-  }).join('');
+  try {
+    const r = await fetch(API + '/finans/analiz');
+    if (!r.ok) throw new Error('Sunucu yanıt vermedi: ' + r.status);
+    const d = await r.json();
+    
+    if (!d.analiz || !Array.isArray(d.analiz)) {
+      throw new Error('Veri formatı hatalı.');
+    }
+
+    list.innerHTML = d.analiz.map(u => {
+      const cost = Math.round(u.birim_maliyet || 0);
+      const price = Math.round(u.ortalama_satis_fiyat || 0);
+      const profit = price - cost;
+      return `
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-weight:500">${u.urun_adi || 'Bilinmeyen Ürün'}</div>
+            <div style="font-size:11px;color:var(--text3)">Birim Maliyet: ${cost} TL | Satış: ${price} TL</div>
+          </div>
+          <div style="text-align:right">
+            <div style="color:${profit >= 0 ? 'var(--green)' : 'var(--red)'};font-weight:600">${profit >= 0 ? '+' : ''}${profit} TL</div>
+            <div style="font-size:10px;color:var(--text3)">Birim Kar</div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    console.error('Finans yükleme hatası:', e);
+    list.innerHTML = `<div style="color:var(--text3);padding:20px;text-align:center">Veriler yüklenemedi: ${e.message}</div>`;
+  }
 }
 
 // Sayfa yüklendiğinde kullanıcıları listele
@@ -195,16 +209,14 @@ async function loadStok() {
 
 function useDemoData() {
   const demo = [
-    {urun_id:'P001',urun_adi:'Çay',mevcut_stok:28,kritik_esik:50,durum:'Kritik',Tedarikci_Adi:'Kahve Pazarı',Tedarik_Suresi_Gun:3},
-    {urun_id:'P002',urun_adi:'Türk Kahvesi',mevcut_stok:65,kritik_esik:30,durum:'Yeterli',Tedarikci_Adi:'Kahve Pazarı',Tedarik_Suresi_Gun:1},
-    {urun_id:'P003',urun_adi:'Latte',mevcut_stok:18,kritik_esik:25,durum:'Kritik',Tedarikci_Adi:'Kahve Pazarı',Tedarik_Suresi_Gun:1},
-    {urun_id:'P004',urun_adi:'Ice Latte',mevcut_stok:35,kritik_esik:20,durum:'Yeterli',Tedarikci_Adi:'Yerel Dağıtım',Tedarik_Suresi_Gun:2},
-    {urun_id:'P005',urun_adi:'Americano',mevcut_stok:42,kritik_esik:25,durum:'Yeterli',Tedarikci_Adi:'Kahve Pazarı',Tedarik_Suresi_Gun:1},
-    {urun_id:'P006',urun_adi:'Cappuccino',mevcut_stok:22,kritik_esik:20,durum:'Düşük',Tedarikci_Adi:'Kahve Pazarı',Tedarik_Suresi_Gun:1},
-    {urun_id:'P007',urun_adi:'Limonata',mevcut_stok:12,kritik_esik:20,durum:'Kritik',Tedarikci_Adi:'Yerel Dağıtım',Tedarik_Suresi_Gun:2},
-    {urun_id:'P008',urun_adi:'Kruvasan',mevcut_stok:55,kritik_esik:30,durum:'Yeterli',Tedarikci_Adi:'Tatlı Ltd.',Tedarik_Suresi_Gun:1},
-    {urun_id:'P009',urun_adi:'Tiramisu',mevcut_stok:8,kritik_esik:15,durum:'Kritik',Tedarikci_Adi:'Tatlı Ltd.',Tedarik_Suresi_Gun:2},
-    {urun_id:'P010',urun_adi:'Mocha',mevcut_stok:38,kritik_esik:25,durum:'Yeterli',Tedarikci_Adi:'Kahve Pazarı',Tedarik_Suresi_Gun:1},
+    {urun_id:'P001',urun_adi:'Çay',mevcut_stok:386,kritik_esik:50,durum:'Yeterli',Tedarikci_Adi:'Kahve Pazarı Toptan',Tedarik_Suresi_Gun:3},
+    {urun_id:'P002',urun_adi:'Türk Kahvesi',mevcut_stok:105,kritik_esik:30,durum:'Yeterli',Tedarikci_Adi:'Kahve Pazarı Toptan',Tedarik_Suresi_Gun:2},
+    {urun_id:'P003',urun_adi:'Latte',mevcut_stok:80,kritik_esik:25,durum:'Yeterli',Tedarikci_Adi:'Kahve Pazarı Toptan',Tedarik_Suresi_Gun:3},
+    {urun_id:'P004',urun_adi:'Ice Latte',mevcut_stok:252,kritik_esik:25,durum:'Yeterli',Tedarikci_Adi:'Yerel İçecek Dağıtım',Tedarik_Suresi_Gun:2},
+    {urun_id:'P005',urun_adi:'Americano',mevcut_stok:17,kritik_esik:25,durum:'Kritik',Tedarikci_Adi:'Kahve Pazarı Toptan',Tedarik_Suresi_Gun:2},
+    {urun_id:'P009',urun_adi:'Espresso',mevcut_stok:0,kritik_esik:20,durum:'Kritik',Tedarikci_Adi:'Kahve Pazarı Toptan',Tedarik_Suresi_Gun:2},
+    {urun_id:'P026',urun_adi:'San Sebastian',mevcut_stok:88,kritik_esik:15,durum:'Yeterli',Tedarikci_Adi:'Tatlı ve Unlu Mamuller Ltd.',Tedarik_Suresi_Gun:2},
+    {urun_id:'P032',urun_adi:'Kruvasan',mevcut_stok:47,kritik_esik:25,durum:'Yeterli',Tedarikci_Adi:'Tatlı ve Unlu Mamuller Ltd.',Tedarik_Suresi_Gun:2},
   ];
   stokData = demo;
   urunler = demo;
@@ -236,6 +248,13 @@ function renderUyariler(kritikler) {
   `).join('');
 }
 
+function getArrivalDate(days) {
+  if (!days) return '-';
+  const date = new Date(2026, 3, 28); // Simüle edilen bugünün tarihi: 28 Nisan 2026
+  date.setDate(date.getDate() + parseInt(days));
+  return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+}
+
 function renderStokTable(data) {
   const tbody = document.getElementById('stokTable');
   if(!tbody) return;
@@ -243,6 +262,8 @@ function renderStokTable(data) {
     const pct = Math.min(100, Math.round((u.mevcut_stok / (u.kritik_esik * 3)) * 100));
     const col = u.durum === 'Kritik' ? 'var(--red)' : u.durum === 'Düşük' ? 'var(--amber)' : 'var(--green)';
     const badge = u.durum === 'Kritik' ? 'badge-red' : u.durum === 'Düşük' ? 'badge-amber' : 'badge-green';
+    const arrival = getArrivalDate(u.Tedarik_Suresi_Gun);
+    
     return `<tr>
       <td style="font-weight:500">${u.urun_adi}</td>
       <td><strong>${u.mevcut_stok}</strong></td>
@@ -253,7 +274,10 @@ function renderStokTable(data) {
       </td>
       <td><span class="badge ${badge}">${u.durum}</span></td>
       <td style="color:var(--text2)">${u.Tedarikci_Adi || '-'}</td>
-      <td style="color:var(--text3)">${u.Tedarik_Suresi_Gun || '-'} gün</td>
+      <td>
+        <div style="font-size:12px;color:var(--text2)">🚚 ${u.Tedarik_Suresi_Gun || '?'} Gün (Lojistik)</div>
+        <div style="font-size:11px;color:var(--blue);font-weight:500">📅 Varış: ${arrival}</div>
+      </td>
     </tr>`;
   }).join('');
 }
@@ -309,30 +333,29 @@ function renderClaudeResult(d) {
   const ozEl = document.getElementById('aiOzet');
   if(!mainEl || !ozEl) return;
   
-  ozEl.innerHTML = `<span style="color:#38bdf8; font-weight:700;">✨ Claude AI:</span> ${d.ozet}`;
-
-  const risks = (d.acil_siparisler || []).map(s => `• ${s.urun}: ${s.neden}`).join('<br>');
-  const actions = (d.aylik_tedarik || []).slice(0,3).map(t => `• ${t.malzeme} tedariği planla.`).join('<br>');
+  ozEl.innerHTML = `<span style="color:#38bdf8; font-weight:700;">✨ Claude AI:</span> ${d.ozet.substring(0, 80)}...`;
 
   mainEl.innerHTML = `
-    <div id="aiMainText" style="margin-bottom:20px; font-weight:500; font-size:15px; color:#f1f5f9; line-height:1.7; background: rgba(56, 189, 248, 0.05); padding: 15px; border-radius: 10px; border: 1px solid rgba(56, 189, 248, 0.1);">
-      ${d.ozet}
-    </div>
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-      <div class="ai-insight-card" style="border-color: #ef4444; background: rgba(239, 68, 68, 0.03); border-radius: 12px;">
-        <div class="ai-insight-label" style="color:#ef4444">🚨 Kritik Riskler</div>
-        <div id="aiRisks" style="font-size:13px; color:#cbd5e1; font-weight:400; line-height:1.5;">
-          ${risks || 'Kritik bir risk saptanmadı.'}
-        </div>
+    <div id="aiMainText" style="margin-bottom:20px; font-weight:500; font-size:15px; color:#f1f5f9; line-height:1.7; background: rgba(56, 189, 248, 0.05); padding: 18px; border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.15); box-shadow: inset 0 0 20px rgba(56, 189, 248, 0.05); white-space: pre-line;"></div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+      <div class="ai-insight-card" style="border-color: #f85149; background: rgba(248, 81, 73, 0.03); border-radius: 12px; border-width: 1px; border-left-width: 4px; white-space: pre-line;">
+        <div class="ai-insight-label" style="color:#f85149; font-size:10px; letter-spacing:1px;">🚨 Kritik Riskler</div>
+        <div id="aiRisks" style="font-size:13px; color:#cbd5e1; line-height:1.5;"></div>
       </div>
-      <div class="ai-insight-card" style="border-color: #22c55e; background: rgba(34, 197, 94, 0.03); border-radius: 12px;">
-        <div class="ai-insight-label" style="color:#22c55e">💡 Stratejik Öneriler</div>
-        <div id="aiActions" style="font-size:13px; color:#cbd5e1; font-weight:400; line-height:1.5;">
-          ${actions || 'Mevcut plan stabil görünüyor.'}
-        </div>
+      <div class="ai-insight-card" style="border-color: #3fb950; background: rgba(63, 185, 80, 0.03); border-radius: 12px; border-width: 1px; border-left-width: 4px; white-space: pre-line;">
+        <div class="ai-insight-label" style="color:#3fb950; font-size:10px; letter-spacing:1px;">💡 Stratejik Öneriler</div>
+        <div id="aiActions" style="font-size:13px; color:#cbd5e1; line-height:1.5;"></div>
       </div>
     </div>
   `;
+
+  typeWriter(d.ozet, 'aiMainText', 8).then(() => {
+    const risks = (d.acil_siparisler || d.uyarilar || []).map(s => `• ${s.urun || s.urun_adi}: ${s.neden || s.mesaj}`).join('\n');
+    typeWriter(risks || 'Kritik bir risk saptanmadı.', 'aiRisks', 5);
+    
+    const actions = (d.aylik_tedarik || d.siparis_onerileri || []).slice(0,3).map(t => `• ${t.malzeme || t.urun_adi} tedariği planla.`).join('\n');
+    typeWriter(actions || 'Mevcut plan stabil görünüyor.', 'aiActions', 5);
+  });
 
   renderSiparisCards(d);
 }
@@ -564,18 +587,34 @@ async function loadTarifler() {
     "Latte": {"Espresso Çekirdeği (g)": "18 g", "Süt (ml)": "200 ml", "Bardak (M)": "1 adet"},
     "Ice Latte": {"Espresso Çekirdeği (g)": "18 g", "Süt (ml)": "180 ml", "Buz (g)": "80 g", "Bardak (L)": "1 adet"},
     "Americano": {"Espresso Çekirdeği (g)": "18 g", "Su (ml)": "180 ml", "Bardak (M)": "1 adet"},
+    "Ice Americano": {"Espresso Çekirdeği (g)": "18 g", "Su (ml)": "150 ml", "Buz (g)": "100 g", "Bardak (L)": "1 adet"},
     "Cappuccino": {"Espresso Çekirdeği (g)": "18 g", "Süt (ml)": "120 ml", "Bardak (M)": "1 adet"},
     "Limonata": {"Limon (adet)": "1.5 adet", "Şeker (g)": "20 g", "Su (ml)": "250 ml", "Buz (g)": "60 g"},
+    "Espresso": {"Espresso Çekirdeği (g)": "18 g", "Fincan": "1 adet"},
+    "Filtre Kahve": {"Filtre Kahve Tozu (g)": "15 g", "Su (ml)": "250 ml", "Bardak (M)": "1 adet"},
     "Mocha": {"Espresso Çekirdeği (g)": "18 g", "Süt (ml)": "180 ml", "Çikolata Sosu (ml)": "20 ml"},
-    "Kruvasan": {"Kruvasan Hamuru (g)": "80 g", "Tereyağı (g)": "20 g"},
-    "Tiramisu": {"Maskarpone (g)": "50 g", "Bisküvi (g)": "30 g", "Espresso Çekirdeği (g)": "5 g"},
-    "Brownie": {"Çikolata (g)": "40 g", "Tereyağı (g)": "30 g", "Un (g)": "20 g", "Yumurta (adet)": "0.5 adet"},
-    "San Sebastian": {"Krem Peynir (g)": "60 g", "Yumurta (adet)": "0.5 adet", "Krema (ml)": "40 ml"},
-    "Flat White": {"Espresso Çekirdeği (g)": "18 g", "Süt (ml)": "130 ml"},
-    "Salep": {"Salep Tozu (g)": "8 g", "Süt (ml)": "200 ml", "Tarçın (g)": "1 g"},
+    "Menengiç Kahvesi": {"Menengiç (g)": "10 g", "Süt (ml)": "80 ml", "Fincan": "1 adet"},
     "Sıcak Çikolata": {"Kakao Tozu (g)": "20 g", "Süt (ml)": "200 ml", "Şeker (g)": "10 g"},
+    "Salep": {"Salep Tozu (g)": "8 g", "Süt (ml)": "200 ml", "Tarçın (g)": "1 g"},
+    "Flat White": {"Espresso Çekirdeği (g)": "18 g", "Süt (ml)": "130 ml"},
+    "Cortado": {"Espresso Çekirdeği (g)": "18 g", "Süt (ml)": "30 ml", "Fincan": "1 adet"},
+    "Chai Tea Latte": {"Chai Mix (g)": "15 g", "Süt (ml)": "200 ml", "Tarçın (g)": "0.5 g"},
+    "Kış Çayı": {"Bitki Mix (g)": "5 g", "Bal (ml)": "10 ml", "Su (ml)": "250 ml", "Limon (dilim)": "1 adet"},
+    "Soğuk Çay": {"Çay Özü (ml)": "30 ml", "Su (ml)": "200 ml", "Buz (g)": "100 g", "Şurup (ml)": "10 ml"},
     "Frappe": {"Filtre Kahve Tozu (g)": "10 g", "Süt (ml)": "100 ml", "Buz (g)": "150 g"},
     "Milkshake": {"Süt (ml)": "200 ml", "Dondurma (g)": "100 g", "Şeker (g)": "10 g"},
+    "Iced Mocha": {"Espresso Çekirdeği (g)": "18 g", "Süt (ml)": "150 ml", "Çikolata Sosu (ml)": "20 ml", "Buz (g)": "100 g"},
+    "Portakal Suyu": {"Portakal (adet)": "3 adet", "Bardak (M)": "1 adet"},
+    "Churchill": {"Soda (ml)": "200 ml", "Limon (adet)": "0.5 adet", "Tuz (g)": "1 g"},
+    "Frozen": {"Meyve Özü (ml)": "50 ml", "Buz (g)": "200 g", "Şurup (ml)": "20 ml"},
+    "San Sebastian": {"Krem Peynir (g)": "60 g", "Yumurta (adet)": "0.5 adet", "Krema (ml)": "40 ml"},
+    "Tiramisu": {"Maskarpone (g)": "50 g", "Bisküvi (g)": "30 g", "Espresso Çekirdeği (g)": "5 g"},
+    "Brownie": {"Çikolata (g)": "40 g", "Tereyağı (g)": "30 g", "Un (g)": "20 g", "Yumurta (adet)": "0.5 adet"},
+    "Havuçlu Tarçınlı Kek": {"Havuç (g)": "30 g", "Un (g)": "40 g", "Tarçın (g)": "2 g", "Ceviz (g)": "5 g"},
+    "Sufle": {"Çikolata (g)": "50 g", "Un (g)": "15 g", "Yumurta (adet)": "1 adet"},
+    "Çikolatalı Cookie": {"Hamur (g)": "60 g", "Çikolata Parçacığı (g)": "15 g"},
+    "Kruvasan": {"Kruvasan Hamuru (g)": "80 g", "Tereyağı (g)": "20 g"},
+    "Profiterol": {"Hamur (g)": "30 g", "Krema (g)": "40 g", "Çikolata Sosu (g)": "30 g"},
   };
   tariflerData = RECIPE_BOOK;
   renderTarifler(RECIPE_BOOK);

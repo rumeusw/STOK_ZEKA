@@ -1,13 +1,16 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
 from datetime import datetime
+import sqlite3
+import os
 
 app = FastAPI()
 
-# CORS Ayarları (Frontend'in sunucuya erişebilmesi için)
+# CORS Ayarları
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,6 +18,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+DB_NAME = "en son database.db"
 
 # --- VERİ MODELLERİ ---
 class Satis(BaseModel):
@@ -29,32 +34,51 @@ class StokHareketi(BaseModel):
     miktar: int
     islem_tipi: str
 
-# --- GEÇİCİ VERİ TABANI (RAM ÜZERİNDE) ---
-# Gerçek projede burada SQL veritabanı kullanılır.
-stok_verisi = [
-    {"urun_id":"P001","urun_adi":"Çay","mevcut_stok":28,"kritik_esik":50,"durum":"Kritik","Tedarikci_Adi":"Kahve Pazarı","Tedarik_Suresi_Gun":3},
-    {"urun_id":"P002","urun_adi":"Türk Kahvesi","mevcut_stok":65,"kritik_esik":30,"durum":"Yeterli","Tedarikci_Adi":"Kahve Pazarı","Tedarik_Suresi_Gun":1},
-    {"urun_id":"P003","urun_adi":"Latte","mevcut_stok":18,"kritik_esik":25,"durum":"Kritik","Tedarikci_Adi":"Kahve Pazarı","Tedarik_Suresi_Gun":1},
-]
-
-satislar = []
+def get_db_connection():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 # --- ENDPOINTLER ---
 
-@app.get("/")
+@app.get("/api/home")
 def home():
-    return {"mesaj": "StokZeka AI Backend Çalışıyor"}
+    return {"mesaj": "StokZeka AI Backend Çalışıyor (SQLite Aktif)"}
 
 @app.get("/stok/mevcut")
 def get_stok():
-    # Durumları hesapla
-    for urun in stok_verisi:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    query = """
+    SELECT 
+        u.Urun_ID as urun_id, 
+        u.Urun_Adi as urun_adi, 
+        COALESCE(SUM(sh.Miktar), 0) as mevcut_stok, 
+        u.Kritik_Stok as kritik_esik,
+        t.Tedarikci_Adi,
+        ut.Tedarik_Suresi_Gun
+    FROM Urunler u
+    LEFT JOIN Stok_Hareketleri sh ON u.Urun_ID = sh.Urun_ID
+    LEFT JOIN Urun_Tedarik ut ON u.Urun_ID = ut.Urun_ID
+    LEFT JOIN Tedarikciler t ON ut.Tedarikci_ID = t.Tedarikci_ID
+    GROUP BY u.Urun_ID
+    """
+    
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    
+    stok_verisi = []
+    for row in rows:
+        urun = dict(row)
+        # Durum hesaplama
         if urun["mevcut_stok"] <= urun["kritik_esik"]:
             urun["durum"] = "Kritik"
         elif urun["mevcut_stok"] <= urun["kritik_esik"] * 1.5:
             urun["durum"] = "Düşük"
         else:
             urun["durum"] = "Yeterli"
+        stok_verisi.append(urun)
             
     ozet = {
         "toplam": len(stok_verisi),
@@ -62,42 +86,65 @@ def get_stok():
         "dusuk": len([u for u in stok_verisi if u["durum"] == "Düşük"]),
         "yeterli": len([u for u in stok_verisi if u["durum"] == "Yeterli"])
     }
+    conn.close()
     return {"urunler": stok_verisi, "ozet": ozet}
 
 @app.get("/urunler")
 def get_urunler():
-    return {"urunler": stok_verisi}
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT Urun_ID as urun_id, Urun_Adi as urun_adi FROM Urunler")
+    urunler = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return {"urunler": urunler}
 
 @app.post("/satislar/kaydet")
 def kaydet_satis(satis: Satis):
-    satislar.append(satis.dict())
-    # Stoktan düş
-    for urun in stok_verisi:
-        if urun["urun_id"] == satis.urun_id:
-            urun["mevcut_stok"] -= satis.adet
-            break
-    return {"durum": "basarili", "toplam_tutar_tl": satis.adet * satis.birim_fiyat}
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        toplam_tutar = satis.adet * satis.birim_fiyat
+        cursor.execute(
+            "INSERT INTO Satislar (Tarih, Urun_ID, Adet, Birim_Fiyat_TL, Toplam_Satis_TL) VALUES (?, ?, ?, ?, ?)",
+            (satis.tarih, satis.urun_id, satis.adet, satis.birim_fiyat, toplam_tutar)
+        )
+        cursor.execute(
+            "INSERT INTO Stok_Hareketleri (Tarih, Urun_ID, Miktar, Islem_Tipi) VALUES (?, ?, ?, ?)",
+            (satis.tarih, satis.urun_id, -satis.adet, 'Satis')
+        )
+        conn.commit()
+        return {"durum": "basarili", "toplam_tutar_tl": toplam_tutar}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
 
 @app.post("/stok/giris")
 def kaydet_stok(hareket: StokHareketi):
-    # Stok ekle veya çıkar
-    for urun in stok_verisi:
-        if urun["urun_id"] == hareket.urun_id:
-            if hareket.islem_tipi == "Giris":
-                urun["mevcut_stok"] += hareket.miktar
-            else:
-                urun["mevcut_stok"] -= hareket.miktar
-            break
-    return {"durum": "basarili"}
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        miktar = hareket.miktar if hareket.islem_tipi == "Giris" else -hareket.miktar
+        cursor.execute(
+            "INSERT INTO Stok_Hareketleri (Tarih, Urun_ID, Miktar, Islem_Tipi) VALUES (?, ?, ?, ?)",
+            (hareket.tarih, hareket.urun_id, miktar, hareket.islem_tipi)
+        )
+        conn.commit()
+        return {"durum": "basarili"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
 
 @app.get("/ai/analiz")
 def ai_analiz():
-    # Demo AI yanıtı
     return {
-        "ozet": "Satış verileri Americano talebinde %15 artış gösteriyor. Çay stokları kritik seviyenin altında, acil tedarik önerilir.",
+        "ozet": "Satış verileri Americano ve Soğuk Kahve talebinde artış gösteriyor. Bazı ürünlerin stokları kritik seviyenin altında.",
         "acil_siparisler": [
-            {"urun": "Çay", "miktar": 100, "neden": "Kritik stok seviyesi"},
-            {"urun": "Latte", "miktar": 50, "neden": "Hızlı tüketim trendi"}
+            {"urun": "Americano", "miktar": 50, "neden": "Kritik stok seviyesi"},
+            {"urun": "Espresso", "miktar": 100, "neden": "Sıfır stok tespiti"}
         ],
         "aylik_tedarik": [
             {"malzeme": "Süt", "miktar": 400, "birim": "L"},
@@ -105,5 +152,42 @@ def ai_analiz():
         ]
     }
 
+@app.get("/finans/analiz")
+def get_finans_analiz():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    query = """
+    SELECT 
+        u.Urun_Adi as urun_adi,
+        AVG(s.Birim_Fiyat_TL) as ortalama_satis_fiyat,
+        ut.Birim_Maliyet_TL as birim_maliyet
+    FROM Urunler u
+    LEFT JOIN Satislar s ON u.Urun_ID = s.Urun_ID
+    LEFT JOIN Urun_Tedarik ut ON u.Urun_ID = ut.Urun_ID
+    GROUP BY u.Urun_ID
+    """
+    
+    try:
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        analiz = []
+        for row in rows:
+            item = dict(row)
+            if item["ortalama_satis_fiyat"] is None:
+                item["ortalama_satis_fiyat"] = 0
+            if item["birim_maliyet"] is None:
+                item["birim_maliyet"] = 0
+            analiz.append(item)
+        return {"analiz": analiz}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+# Statik dosyaları sunmak için (Render kurulumu için gerekli)
+app.mount("/", StaticFiles(directory=".", html=True), name="static")
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
