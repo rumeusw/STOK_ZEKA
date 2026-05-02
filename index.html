@@ -99,24 +99,24 @@
     </div>
     <nav class="nav">
       <div class="nav-section">Ana Menü</div>
-      <div class="nav-item active" onclick="showPage('dashboard')"><span class="ni">📊</span> Dashboard</div>
-      <div class="nav-item" onclick="showPage('stok')"><span class="ni">📦</span> Stok Durumu <span class="nav-badge" id="kritikBadge">0</span></div>
-      <div class="nav-item" onclick="showPage('urunler')"><span class="ni">☕</span> Ürünler</div>
+      <div class="nav-item active" onclick="showPage('dashboard', event)"><span class="ni">📊</span> Dashboard</div>
+      <div class="nav-item" onclick="showPage('stok', event)"><span class="ni">📦</span> Stok Durumu <span class="nav-badge" id="kritikBadge">0</span></div>
+      <div class="nav-item" onclick="showPage('urunler', event)"><span class="ni">☕</span> Ürünler</div>
       
       <div class="nav-section">Yapay Zeka</div>
-      <div class="nav-item" onclick="showPage('ai')"><span class="ni">🤖</span> AI Analiz</div>
-      <div class="nav-item" onclick="showPage('tahmin')"><span class="ni">📈</span> Tahminler</div>
+      <div class="nav-item" onclick="showPage('ai', event)"><span class="ni">🤖</span> AI Analiz</div>
+      <div class="nav-item" onclick="showPage('tahmin', event)"><span class="ni">📈</span> Tahminler</div>
       
       <div class="nav-section">Operasyon</div>
-      <div class="nav-item" onclick="showPage('satis')"><span class="ni">💰</span> Satış Kaydet</div>
-      <div class="nav-item" onclick="showPage('tarifler')"><span class="ni">📋</span> Tarifler</div>
+      <div class="nav-item" onclick="showPage('satis', event)"><span class="ni">💰</span> Satış Kaydet</div>
+      <div class="nav-item" onclick="showPage('tarifler', event)"><span class="ni">📋</span> Tarifler</div>
 
       <!-- SADECE YÖNETİCİYE ÖZEL BÖLÜM -->
       <div id="adminMenu" style="display:none">
         <div class="nav-section" style="color:var(--orange)">⚠️ Yönetici Özel</div>
-        <div class="nav-item" onclick="showPage('personel')"><span class="ni">👥</span> Personel Yönetimi</div>
-        <div class="nav-item" onclick="showPage('yukle')"><span class="ni">📤</span> Veri Yükle (Toplu)</div>
-        <div class="nav-item" onclick="showPage('finans')"><span class="ni">💸</span> Kar/Zarar Analizi</div>
+        <div class="nav-item" onclick="showPage('personel', event)"><span class="ni">👥</span> Personel Yönetimi</div>
+        <div class="nav-item" onclick="showPage('yukle', event)"><span class="ni">📤</span> Veri Yükle (Toplu)</div>
+        <div class="nav-item" onclick="showPage('finans', event)"><span class="ni">💸</span> Kar/Zarar Analizi</div>
       </div>
     </nav>
     <div class="sidebar-footer">

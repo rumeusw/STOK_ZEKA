@@ -1,5 +1,5 @@
 
-const API = '';
+const API = window.location.origin;
 
 let users = [
   { name: 'Ahmet Kaya', role: 'Yönetici', color: '#1f6feb', icon: '👨‍💼', pwd: '1234' },
@@ -22,7 +22,7 @@ function renderUsers() {
   if(!list) return;
   list.innerHTML = users.map((u, i) => `
     <div class="user-opt ${u.name === currentUser.name ? 'selected' : ''}" 
-         onclick="selectUser(this, '${u.name}', '${u.role}', '${u.color}')"
+         onclick="selectUser(this, '${u.name}')"
          data-color="${u.color}">
       <div class="uo-icon">${u.icon || '👤'}</div>
       <div class="uo-name">${u.name}</div>
@@ -31,20 +31,24 @@ function renderUsers() {
   `).join('');
 }
 
-function selectUser(el, name, role, color) {
+function selectUser(el, name) {
   document.querySelectorAll('.user-opt').forEach(o => o.classList.remove('selected'));
   el.classList.add('selected');
   currentUser = users.find(u => u.name === name);
 }
 
 function showRegister() {
-  document.getElementById('loginPage').style.display = 'none';
-  document.getElementById('registerPage').style.display = 'flex';
+  const loginPage = document.getElementById('loginPage');
+  const registerPage = document.getElementById('registerPage');
+  if(loginPage) loginPage.style.display = 'none';
+  if(registerPage) registerPage.style.display = 'flex';
 }
 
 function hideRegister() {
-  document.getElementById('registerPage').style.display = 'none';
-  document.getElementById('loginPage').style.display = 'flex';
+  const loginPage = document.getElementById('loginPage');
+  const registerPage = document.getElementById('registerPage');
+  if(registerPage) registerPage.style.display = 'none';
+  if(loginPage) loginPage.style.display = 'flex';
 }
 
 function doRegister() {
@@ -80,15 +84,15 @@ function doLogout() {
 }
 
 // ── NAVIGATION ────────────────────────────────────
-function showPage(id) {
+function showPage(id, event) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   
   const page = document.getElementById('page-' + id);
   if(page) page.classList.add('active');
   
-  if (window.event && window.event.currentTarget && window.event.currentTarget.classList) {
-    window.event.currentTarget.classList.add('active');
+  if (event && event.currentTarget) {
+    event.currentTarget.classList.add('active');
   }
   
   if (id === 'malzeme') loadMalzeme();
@@ -100,20 +104,25 @@ function showPage(id) {
 
 // ── INIT ───────────────────────────────────────────
 async function initApp() {
-  const el = document.getElementById('avatarEl');
-  el.textContent = currentUser.name.split(' ').map(w=>w[0]).join('');
-  el.style.background = currentUser.color + '22';
-  el.style.color = currentUser.color;
-  document.getElementById('userNameEl').textContent = currentUser.name;
-  document.getElementById('userRoleEl').textContent = currentUser.role;
-  document.getElementById('dashDate').textContent = new Date().toLocaleDateString('tr-TR', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const avatarEl = document.getElementById('avatarEl');
+  if(avatarEl) {
+    avatarEl.textContent = currentUser.name.split(' ').map(w=>w[0]).join('');
+    avatarEl.style.background = currentUser.color + '22';
+    avatarEl.style.color = currentUser.color;
+  }
+  
+  const userNameEl = document.getElementById('userNameEl');
+  const userRoleEl = document.getElementById('userRoleEl');
+  if(userNameEl) userNameEl.textContent = currentUser.name;
+  if(userRoleEl) userRoleEl.textContent = currentUser.role;
+  
+  const dashDate = document.getElementById('dashDate');
+  if(dashDate) dashDate.textContent = new Date().toLocaleDateString('tr-TR', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
   // ADMIN KONTROLÜ
   const adminMenu = document.getElementById('adminMenu');
-  if (currentUser.role === 'Yönetici') {
-    adminMenu.style.display = 'block';
-  } else {
-    adminMenu.style.display = 'none';
+  if (adminMenu) {
+    adminMenu.style.display = (currentUser.role === 'Yönetici') ? 'block' : 'none';
   }
 
   const today = new Date().toISOString().split('T')[0];
@@ -128,6 +137,7 @@ async function initApp() {
 // ── ADMIN ÖZEL ────────────────────────────────────
 function loadPersonelTable() {
   const tbody = document.getElementById('personelTable');
+  if(!tbody) return;
   tbody.innerHTML = users.map((u, i) => `
     <tr>
       <td><strong>${u.name}</strong></td>
@@ -151,6 +161,7 @@ function deleteUser(idx) {
 
 async function loadFinans() {
   const list = document.getElementById('karAnalizList');
+  if(!list) return;
   try {
     const r = await fetch(API + '/finans/analiz');
     if (!r.ok) throw new Error('Sunucu yanıt vermedi: ' + r.status);
@@ -191,15 +202,25 @@ window.onload = () => {
 async function loadStok() {
   try {
     const r = await fetch(API + '/stok/mevcut');
+    if (!r.ok) throw new Error();
     const d = await r.json();
     stokData = d.urunler;
     const oz = d.ozet;
-    document.getElementById('mToplam').textContent = oz.toplam;
-    document.getElementById('mKritik').textContent = oz.kritik;
-    document.getElementById('mDusuk').textContent = oz.dusuk;
-    document.getElementById('mYeterli').textContent = oz.yeterli;
-    document.getElementById('kritikBadge').textContent = oz.kritik;
-    document.getElementById('uyariBadge').textContent = oz.kritik + ' ürün';
+    
+    const elements = {
+        'mToplam': oz.toplam,
+        'mKritik': oz.kritik,
+        'mDusuk': oz.dusuk,
+        'mYeterli': oz.yeterli,
+        'kritikBadge': oz.kritik,
+        'uyariBadge': oz.kritik + ' ürün'
+    };
+
+    for (let id in elements) {
+        const el = document.getElementById(id);
+        if(el) el.textContent = elements[id];
+    }
+
     renderStokTable(stokData);
     renderUyariler(stokData.filter(u => u.durum === 'Kritik'));
   } catch(e) {
@@ -223,12 +244,13 @@ function useDemoData() {
   const kritikSay = demo.filter(u=>u.durum==='Kritik').length;
   const dusukSay = demo.filter(u=>u.durum==='Düşük').length;
   const yeterliSay = demo.filter(u=>u.durum==='Yeterli').length;
-  document.getElementById('mToplam').textContent = demo.length;
-  document.getElementById('mKritik').textContent = kritikSay;
-  document.getElementById('mDusuk').textContent = dusukSay;
-  document.getElementById('mYeterli').textContent = yeterliSay;
-  document.getElementById('kritikBadge').textContent = kritikSay;
-  document.getElementById('uyariBadge').textContent = kritikSay + ' ürün';
+  
+  const elMap = {'mToplam':demo.length, 'mKritik':kritikSay, 'mDusuk':dusukSay, 'mYeterli':yeterliSay, 'kritikBadge':kritikSay, 'uyariBadge': kritikSay + ' ürün'};
+  for(let id in elMap) {
+      const el = document.getElementById(id);
+      if(el) el.textContent = elMap[id];
+  }
+
   renderStokTable(stokData);
   renderUyariler(stokData.filter(u=>u.durum==='Kritik'));
   populateSelects(demo);
@@ -236,6 +258,7 @@ function useDemoData() {
 
 function renderUyariler(kritikler) {
   const el = document.getElementById('uyariListesi');
+  if(!el) return;
   if (!kritikler.length) { el.innerHTML = '<div class="alert alert-ok"><div class="alert-icon">✅</div><div class="alert-body"><div class="alert-title">Tüm stoklar yeterli</div></div></div>'; return; }
   el.innerHTML = kritikler.map(u => `
     <div class="alert alert-critical">
@@ -250,7 +273,7 @@ function renderUyariler(kritikler) {
 
 function getArrivalDate(days) {
   if (!days) return '-';
-  const date = new Date(2026, 3, 28); // Simüle edilen bugünün tarihi: 28 Nisan 2026
+  const date = new Date();
   date.setDate(date.getDate() + parseInt(days));
   return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
 }
@@ -293,7 +316,8 @@ function renderStokChart() {
   const dusuk = stokData.filter(u=>u.durum==='Düşük').length;
   const yeterli = stokData.filter(u=>u.durum==='Yeterli').length;
   const ctx = document.getElementById('stokChart');
-  if(!ctx) return;
+  if(!ctx || typeof Chart === 'undefined') return;
+  
   if (stokChart) stokChart.destroy();
   stokChart = new Chart(ctx, {
     type: 'doughnut',
@@ -308,7 +332,7 @@ function renderStokChart() {
   });
 }
 
-// ── AI ANALİZ UPGRADE ─────────────────────────────
+// ── AI ANALİZ ─────────────────────────────────────
 async function typeWriter(text, elementId, speed = 15) {
   const el = document.getElementById(elementId);
   if (!el) return;
@@ -395,11 +419,6 @@ async function runTahmin() {
   if(!grid) return;
   grid.innerHTML = '<div style="color:var(--text3)"><span class="pulse"></span> Hesaplanıyor...</div>';
   
-  if (aiAnalysis && aiAnalysis.haftalik_tahmin) {
-    renderTahminGrid(aiAnalysis.haftalik_tahmin);
-    return;
-  }
-
   try {
     const r = await fetch(API + '/ai/analiz');
     const d = await r.json();
@@ -481,9 +500,11 @@ function renderDemoTahmin() {
 
 // ── MALZEME TÜKETİMİ ─────────────────────────────
 async function loadMalzeme() {
-  const gun = document.getElementById('malzemeDon').value;
+  const select = document.getElementById('malzemeDon');
+  const gun = select ? select.value : 30;
   try {
     const r = await fetch(`${API}/ai/malzeme-tuketimi?gunler=${gun}`);
+    if(!r.ok) throw new Error();
     const d = await r.json();
     renderMalzemeChartData(d.malzeme_tuketimi);
     renderAylikTedarikFromData(d.malzeme_tuketimi);
@@ -508,7 +529,7 @@ function renderMalzemeChartData(data) {
   const values = sorted.map(([,v])=>Math.round(v));
 
   const ctx = document.getElementById('malzemeChart');
-  if(!ctx) return;
+  if(!ctx || typeof Chart === 'undefined') return;
   if (malzemeChart) malzemeChart.destroy();
   malzemeChart = new Chart(ctx, {
     type: 'bar',
@@ -642,6 +663,7 @@ function filterTarifler(q) {
 async function loadUrunSelect() {
   try {
     const r = await fetch(API + '/urunler');
+    if(!r.ok) throw new Error();
     const d = await r.json();
     urunler = d.urunler;
     populateSelects(urunler);
@@ -659,28 +681,72 @@ function populateSelects(data) {
 
 // ── KAYIT ────────────────────────────────────────
 async function kaydetSatis() {
-  const body = { tarih:document.getElementById('satisTarih').value, urun_id:document.getElementById('satisUrun').value, adet:parseInt(document.getElementById('satisAdet').value), birim_fiyat:parseFloat(document.getElementById('satisFiyat').value) };
+  const urunId = document.getElementById('satisUrun').value;
+  const adet = parseInt(document.getElementById('satisAdet').value);
+  const fiyat = parseFloat(document.getElementById('satisFiyat').value);
+  const tarih = document.getElementById('satisTarih').value;
+
+  const body = { tarih, urun_id: urunId, adet, birim_fiyat: fiyat };
   const el = document.getElementById('satisResult');
+  
   try {
-    const r = await fetch(API+'/satislar/kaydet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const r = await fetch(API+'/satislar/kaydet',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body)
+    });
+    if(!r.ok) throw new Error();
     const d = await r.json();
-    el.style.display='block'; el.style.color='var(--green)'; el.textContent='✅ Satış kaydedildi! Toplam: '+(d.toplam_tutar_tl||0)+' TL';
+    if(el) {
+        el.style.display='block'; 
+        el.style.color='var(--green)'; 
+        el.textContent='✅ Satış kaydedildi! Toplam: '+(d.toplam_tutar_tl||0)+' TL';
+    }
+    // GÜNCELLEME: Refresh after sale
+    await loadStok();
+    renderStokChart();
   } catch(e) {
-    el.style.display='block'; el.style.color='var(--amber)'; el.textContent='⚠️ API bağlantısı yok — demo modunda kayıt simüle edildi.';
+    if(el) {
+        el.style.display='block'; 
+        el.style.color='var(--amber)'; 
+        el.textContent='⚠️ API bağlantısı yok — demo modunda kayıt simüle edildi.';
+    }
   }
-  setTimeout(()=>{el.style.display='none'},3000);
+  setTimeout(()=>{ if(el) el.style.display='none' },3000);
 }
 
 async function kaydetStok() {
-  const body = { tarih:document.getElementById('stokTarih').value, urun_id:document.getElementById('stokGirisUrun').value, miktar:parseInt(document.getElementById('stokMiktar').value), islem_tipi:document.getElementById('stokTip').value };
+  const urunId = document.getElementById('stokGirisUrun').value;
+  const miktar = parseInt(document.getElementById('stokMiktar').value);
+  const tip = document.getElementById('stokTip').value;
+  const tarih = document.getElementById('stokTarih').value;
+
+  const body = { tarih, urun_id: urunId, miktar, islem_tipi: tip };
   const el = document.getElementById('stokResult');
+  
   try {
-    const r = await fetch(API+'/stok/giris',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    el.style.display='block'; el.style.color='var(--green)'; el.textContent='✅ Stok hareketi kaydedildi!';
+    const r = await fetch(API+'/stok/giris',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body)
+    });
+    if(!r.ok) throw new Error();
+    if(el) {
+        el.style.display='block'; 
+        el.style.color='var(--green)'; 
+        el.textContent='✅ Stok hareketi kaydedildi!';
+    }
+    // GÜNCELLEME: Refresh after stock entry
+    await loadStok();
+    renderStokChart();
   } catch(e) {
-    el.style.display='block'; el.style.color='var(--amber)'; el.textContent='⚠️ API yok — demo modunda simüle edildi.';
+    if(el) {
+        el.style.display='block'; 
+        el.style.color='var(--amber)'; 
+        el.textContent='⚠️ API yok — demo modunda simüle edildi.';
+    }
   }
-  setTimeout(()=>{el.style.display='none'},3000);
+  setTimeout(()=>{ if(el) el.style.display='none' },3000);
 }
 
 function renderSiparisCards(d) {
@@ -727,10 +793,14 @@ function handleCSV(input, type) {
     if (type==='satis') {
       rows.forEach(async row => {
         try {
-          await fetch(API+'/satislar/kaydet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tarih:row.tarih,urun_id:row.urun_id,adet:parseInt(row.adet),birim_fiyat:parseFloat(row.birim_fiyat||row.fiyat||75)})});
-        } catch(e){}
+          await fetch(API+'/satislar/kaydet',{
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({tarih:row.tarih, urun_id:row.urun_id, adet:parseInt(row.adet), birim_fiyat:parseFloat(row.birim_fiyat||row.fiyat||75)})
+          });
+        } catch(err){}
       });
-      setTimeout(()=>{ el.style.color='var(--green)'; el.textContent='✅ '+rows.length+' satış başarıyla yüklendi!'; }, 500);
+      setTimeout(()=>{ el.style.color='var(--green)'; el.textContent='✅ '+rows.length+' satış başarıyla yüklendi!'; loadStok(); }, 500);
     }
   };
   reader.readAsText(file);
