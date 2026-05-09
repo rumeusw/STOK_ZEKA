@@ -1,4 +1,5 @@
-fastapi
-uvicorn
+streamlit
+pandas
 pydantic
 jinja2
+sqlite3
