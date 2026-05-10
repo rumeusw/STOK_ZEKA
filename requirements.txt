@@ -1,5 +1,5 @@
-streamlit
-pandas
+fastapi
+uvicorn
 pydantic
 jinja2
-sqlite3
+python-multipart

@@ -149,20 +149,69 @@ def ai_analiz():
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
+        
+        # 1. HAFTA SONU TREND ANALİZİ (Predictive Part)
+        # SQLite'da strftime('%w', Tarih) 0=Pazar, 6=Cumartesi döner.
         cursor.execute("""
-            SELECT u.Urun_Adi, COALESCE(SUM(sh.Miktar), 0) as stok, u.Kritik_Stok
+            SELECT 
+                CASE WHEN CAST(strftime('%w', Tarih) AS INT) IN (0, 6) THEN 'HaftaSonu' ELSE 'HaftaIci' END as tip,
+                AVG(Adet) as ortalama_satis
+            FROM Satislar
+            GROUP BY tip
+        """)
+        trends = {row["tip"]: row["ortalama_satis"] for row in cursor.fetchall()}
+        
+        # Varsayılan katsayı 1.0 (eğer veri yoksa)
+        hafta_sonu_artis_orani = 1.0
+        if "HaftaSonu" in trends and "HaftaIci" in trends and trends["HaftaIci"] > 0:
+            hafta_sonu_artis_orani = trends["HaftaSonu"] / trends["HaftaIci"]
+
+        # 2. KRİTİK STOK ANALİZİ
+        cursor.execute("""
+            SELECT u.Urun_Adi, u.Urun_ID, COALESCE(SUM(sh.Miktar), 0) as mevcut_stok, u.Kritik_Stok
             FROM Urunler u
             LEFT JOIN Stok_Hareketleri sh ON u.Urun_ID = sh.Urun_ID
             GROUP BY u.Urun_ID
-            HAVING stok <= u.Kritik_Stok
         """)
-        kritikler = cursor.fetchall()
-        acil_siparisler = [{"urun": k["Urun_Adi"], "miktar": 50, "neden": "Kritik stok seviyesi"} for k in kritikler]
+        urunler = cursor.fetchall()
         
+        bugun_gun = datetime.now().weekday() # 4=Cuma, 5=Cumartesi
+        yarın_hafta_sonu_mu = bugun_gun in [4, 5, 6]
+        
+        acil_siparisler = []
+        for u in urunler:
+            mevcut = u["mevcut_stok"]
+            esik = u["Kritik_Stok"]
+            
+            # Eğer yarın hafta sonu ise, eşiği yapay zekanın bulduğu katsayı ile artırıyoruz
+            dinamik_esik = esik
+            if yarın_hafta_sonu_mu:
+                dinamik_esik = esik * hafta_sonu_artis_orani
+            
+            if mevcut <= dinamik_esik:
+                neden = "Kritik stok seviyesi"
+                if yarın_hafta_sonu_mu and hafta_sonu_artis_orani > 1:
+                    neden = f"Hafta sonu beklenen %{int((hafta_sonu_artis_orani-1)*100)} satış artışı nedeniyle"
+                
+                acil_siparisler.append({
+                    "urun": u["Urun_Adi"],
+                    "miktar": int(esik * 0.5), # Eşiğin yarısı kadar sipariş öner
+                    "neden": neden
+                })
+        
+        mesaj = "Analiz Edildi: "
+        if yarın_hafta_sonu_mu:
+            mesaj += f"Hafta sonu yoğunluğu algılandı (Artış: %{int((hafta_sonu_artis_orani-1)*100)}). "
+        
+        mesaj += f"{len(acil_siparisler)} ürün için hazırlık yapılmalı." if acil_siparisler else "Stoklar yeterli."
+
         return {
-            "ozet": "AI Analizine göre " + (f"{len(acil_siparisler)} ürün kritik seviyede." if acil_siparisler else "stoklar dengeli."),
+            "ozet": mesaj,
             "acil_siparisler": acil_siparisler,
-            "aylik_tedarik": [{"malzeme": "Süt", "miktar": 400, "birim": "L"}, {"malzeme": "Kahve Çekirdeği", "miktar": 45, "birim": "kg"}]
+            "tahmin_detay": {
+                "hafta_sonu_katsayisi": round(hafta_sonu_artis_orani, 2),
+                "yarın_riskli_mi": yarın_hafta_sonu_mu
+            }
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
