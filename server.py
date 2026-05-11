@@ -21,7 +21,7 @@ app.add_middleware(
 
 # Mutlak yol kullanarak veritabanı bağlantısı
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_NAME = os.path.join(BASE_DIR, "en son database.db")
+DB_NAME = os.path.join(BASE_DIR, "stokzeka-son_databse.db")
 
 # --- VERİ MODELLERİ ---
 class Satis(BaseModel):
