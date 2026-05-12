@@ -133,6 +133,7 @@ async function initApp() {
   await loadStok();
   await loadFinans();
   await loadUrunSelect();
+  await loadHammaddeSelect();
   renderStokChart();
 }
 
@@ -262,19 +263,161 @@ function useDemoData() {
   populateSelects(demo);
 }
 
+// ── HAMMADDE & ZİNCİRLEME KRİTİKLİK MANTIĞI ─────────────────────────────────
+// Tarife göre hangi hammaddelerin hangi içeceklerde kullanıldığı
+const HAMMADDE_KULLANIM = {
+  'Espresso Çekirdeği (g)': ['Latte', 'Ice Latte', 'Americano', 'Ice Americano', 'Cappuccino', 'Mocha', 'Iced Mocha', 'Espresso', 'Flat White', 'Cortado', 'Tiramisu'],
+  'Süt (ml)': ['Latte', 'Ice Latte', 'Cappuccino', 'Mocha', 'Iced Mocha', 'Flat White', 'Cortado', 'Sıcak Çikolata', 'Salep', 'Chai Tea Latte', 'Milkshake', 'Menengiç Kahvesi', 'Frappe'],
+  'Çay Yaprağı (g)': ['Çay'],
+  'Türk Kahvesi Tozu (g)': ['Türk Kahvesi'],
+  'Buz (g)': ['Ice Latte', 'Ice Americano', 'Limonata', 'Soğuk Çay', 'Frappe', 'Frozen'],
+  'Çikolata Sosu (ml)': ['Mocha', 'Iced Mocha'],
+  'Limon (adet)': ['Limonata', 'Kış Çayı'],
+  'Şeker (g)': ['Limonata', 'Sıcak Çikolata', 'Milkshake'],
+  'Un (g)': ['Brownie', 'Sufle', 'Havuçlu Tarçınlı Kek', 'Kruvasan'],
+  'Yumurta (adet)': ['San Sebastian', 'Brownie', 'Sufle'],
+  'Bardak (M)': ['Latte', 'Americano', 'Filtre Kahve', 'Portakal Suyu'],
+  'Bardak (L)': ['Ice Latte', 'Ice Americano'],
+  'Pipet': ['Ice Latte', 'Ice Americano', 'Limonata', 'Soğuk Çay', 'Frappe', 'Frozen'],
+  'Fincan': ['Türk Kahvesi', 'Espresso', 'Menengiç Kahvesi', 'Cortado'],
+};
+
+// Tarife göre her içeceğin kullandığı hammaddeler (app.js'teki RECIPE_BOOK ile aynı)
+const URUN_HAMMADDE = {
+  'Çay': ['Çay Yaprağı (g)', 'Su (ml)', 'Bardak (S)'],
+  'Türk Kahvesi': ['Türk Kahvesi Tozu (g)', 'Su (ml)', 'Fincan'],
+  'Latte': ['Espresso Çekirdeği (g)', 'Süt (ml)', 'Bardak (M)'],
+  'Ice Latte': ['Espresso Çekirdeği (g)', 'Süt (ml)', 'Buz (g)', 'Bardak (L)', 'Pipet'],
+  'Americano': ['Espresso Çekirdeği (g)', 'Su (ml)', 'Bardak (M)'],
+  'Ice Americano': ['Espresso Çekirdeği (g)', 'Su (ml)', 'Buz (g)', 'Bardak (L)', 'Pipet'],
+  'Cappuccino': ['Espresso Çekirdeği (g)', 'Süt (ml)', 'Bardak (M)'],
+  'Mocha': ['Espresso Çekirdeği (g)', 'Süt (ml)', 'Çikolata Sosu (ml)'],
+  'Iced Mocha': ['Espresso Çekirdeği (g)', 'Süt (ml)', 'Çikolata Sosu (ml)', 'Buz (g)'],
+  'Espresso': ['Espresso Çekirdeği (g)', 'Fincan'],
+  'Flat White': ['Espresso Çekirdeği (g)', 'Süt (ml)'],
+  'Cortado': ['Espresso Çekirdeği (g)', 'Süt (ml)', 'Fincan'],
+  'Limonata': ['Limon (adet)', 'Şeker (g)', 'Su (ml)', 'Buz (g)', 'Pipet'],
+  'Tiramisu': ['Maskarpone (g)', 'Bisküvi (g)', 'Espresso Çekirdeği (g)'],
+  'Kruvasan': ['Un (g)'],
+};
+
+/**
+ * Kritik stok durumunu hammadde bazında analiz eder.
+ * Bir içecek kritikse, onun kullandığı hammaddeler de kritik sayılır.
+ * Aynı hammaddeyi kullanan diğer içecekler de bu nedenle etkilenmiş sayılır.
+ */
+function hesaplaHammaddeKritikligi(stokVerisi) {
+  const kritikUrunler = stokVerisi.filter(u => u.durum === 'Kritik');
+  const dusukUrunler = stokVerisi.filter(u => u.durum === 'Düşük');
+  
+  // Her kritik ürünün hammaddelerini bul
+  const kritikHammaddeler = {}; // { hammadde: { urunler: [], stokVerisi: {...} } }
+  
+  kritikUrunler.forEach(u => {
+    const hammaddeler = URUN_HAMMADDE[u.urun_adi] || [];
+    hammaddeler.forEach(h => {
+      if (!kritikHammaddeler[h]) {
+        kritikHammaddeler[h] = { nedenUrunler: [], etkilenenUrunler: new Set() };
+      }
+      kritikHammaddeler[h].nedenUrunler.push(u.urun_adi);
+      // Bu hammaddeyi kullanan TÜM içecekler etkileniyor
+      (HAMMADDE_KULLANIM[h] || []).forEach(etkilenen => {
+        kritikHammaddeler[h].etkilenenUrunler.add(etkilenen);
+      });
+    });
+  });
+
+  // Düşük stok için de aynı mantık (ama ayrı liste)
+  const dusukHammaddeler = {};
+  dusukUrunler.forEach(u => {
+    const hammaddeler = URUN_HAMMADDE[u.urun_adi] || [];
+    hammaddeler.forEach(h => {
+      if (!kritikHammaddeler[h]) { // Zaten kritik değilse
+        if (!dusukHammaddeler[h]) {
+          dusukHammaddeler[h] = { nedenUrunler: [], etkilenenUrunler: new Set() };
+        }
+        dusukHammaddeler[h].nedenUrunler.push(u.urun_adi);
+        (HAMMADDE_KULLANIM[h] || []).forEach(etkilenen => {
+          dusukHammaddeler[h].etkilenenUrunler.add(etkilenen);
+        });
+      }
+    });
+  });
+
+  return { kritikHammaddeler, dusukHammaddeler };
+}
+
 function renderUyariler(kritikler) {
   const el = document.getElementById('uyariListesi');
   if(!el) return;
-  if (!kritikler.length) { el.innerHTML = '<div class="alert alert-ok"><div class="alert-icon">✅</div><div class="alert-body"><div class="alert-title">Tüm stoklar yeterli</div></div></div>'; return; }
-  el.innerHTML = kritikler.map(u => `
-    <div class="alert alert-critical">
-      <div class="alert-icon">🔴</div>
-      <div class="alert-body">
-        <div class="alert-title" style="color:var(--red)">${u.urun_adi}</div>
-        <div class="alert-desc">Mevcut: <strong>${u.mevcut_stok}</strong> | Kritik eşik: ${u.kritik_esik} | Tedarik: ${u.Tedarik_Suresi_Gun || '?'} gün</div>
-      </div>
-    </div>
-  `).join('');
+  
+  if (!kritikler.length) { 
+    el.innerHTML = '<div class="alert alert-ok"><div class="alert-icon">✅</div><div class="alert-body"><div class="alert-title">Tüm stoklar yeterli</div></div></div>'; 
+    return; 
+  }
+
+  const { kritikHammaddeler } = hesaplaHammaddeKritikligi(stokData);
+  
+  // Önce doğrudan kritik içecekleri göster, sonra hammadde etkisini
+  let html = '';
+  
+  // Doğrudan kritik içecekler
+  kritikler.forEach(u => {
+    const hammaddeler = URUN_HAMMADDE[u.urun_adi] || [];
+    const hammaddeStr = hammaddeler.length ? `<span style="color:var(--amber);font-size:11px">⚙️ Hammadde: ${hammaddeler.slice(0,3).join(', ')}${hammaddeler.length > 3 ? '...' : ''}</span>` : '';
+    html += `
+      <div class="alert alert-critical">
+        <div class="alert-icon">🔴</div>
+        <div class="alert-body">
+          <div class="alert-title" style="color:var(--red)">${u.urun_adi}</div>
+          <div class="alert-desc">Mevcut: <strong>${u.mevcut_stok}</strong> | Eşik: ${u.kritik_esik} | Tedarik: ${u.Tedarik_Suresi_Gun || '?'} gün</div>
+          <div style="margin-top:3px">${hammaddeStr}</div>
+        </div>
+      </div>`;
+  });
+
+  // Zincirleme etkilenen hammaddeler (kritik içecekler aracılığıyla)
+  const zincirUyarilari = [];
+  Object.entries(kritikHammaddeler).forEach(([hammadde, info]) => {
+    const etkilenenListesi = [...info.etkilenenUrunler].filter(u => 
+      !kritikler.find(k => k.urun_adi === u) // Zaten doğrudan kritik olanları hariç tut
+    );
+    if (etkilenenListesi.length > 0) {
+      zincirUyarilari.push({ hammadde, nedenler: info.nedenUrunler, etkilenen: etkilenenListesi });
+    }
+  });
+
+  if (zincirUyarilari.length > 0) {
+    html += `<div style="margin-top:8px;padding:6px 10px;background:rgba(230,100,50,0.08);border-radius:6px;border-left:3px solid var(--amber)">
+      <div style="font-size:11px;color:var(--amber);font-weight:600;margin-bottom:4px">⛓️ ZİNCİRLEME ETKİ — Hammadde Bağımlılığı</div>`;
+    zincirUyarilari.forEach(z => {
+      html += `<div style="font-size:12px;color:var(--text2);margin:3px 0">
+        <strong style="color:var(--orange)">${z.hammadde}</strong> kritik 
+        <span style="color:var(--text3)">(${z.nedenler.join(', ')} nedeniyle)</span> → 
+        <span style="color:var(--amber)">${z.etkilenen.slice(0,4).join(', ')}${z.etkilenen.length > 4 ? ` +${z.etkilenen.length-4}` : ''} de etkileniyor</span>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+
+  // Hammadde sipariş özeti (dashboard'un altında)
+  const ozEl = document.getElementById('hammaddeOzet');
+  if (ozEl && Object.keys(kritikHammaddeler).length > 0) {
+    ozEl.style.display = 'block';
+    ozEl.innerHTML = `
+      <div style="padding:10px 12px;background:rgba(230,90,40,0.07);border:1px solid rgba(230,90,40,0.25);border-radius:8px">
+        <div style="font-size:11px;font-weight:700;color:var(--orange);margin-bottom:6px">📦 SİPARİŞ EDİLMESİ GEREKEN HAMMADDELER</div>
+        ${Object.entries(kritikHammaddeler).map(([h, info]) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px">
+            <span style="color:var(--text1);font-weight:500">⚙️ ${h}</span>
+            <span style="color:var(--text3)">${[...info.etkilenenUrunler].slice(0,3).join(', ')}${info.etkilenenUrunler.size > 3 ? ` +${info.etkilenenUrunler.size - 3}` : ''}</span>
+          </div>`).join('')}
+      </div>`;
+  } else if (ozEl) {
+    ozEl.style.display = 'none';
+  }
 }
 
 function getArrivalDate(days) {
@@ -383,7 +526,11 @@ function renderClaudeResult(d) {
     const risks = (d.acil_siparisler || d.uyarilar || []).map(s => `• ${s.urun || s.urun_adi}: ${s.neden || s.mesaj}`).join('\n');
     typeWriter(risks || 'Kritik bir risk saptanmadı.', 'aiRisks', 5);
     
-    const actions = (d.aylik_tedarik || d.siparis_onerileri || []).slice(0,3).map(t => `• ${t.malzeme || t.urun_adi} tedariği planla.`).join('\n');
+    // Hammadde bazlı öneriler (içecek değil malzeme siparişi)
+    const hammaddeSiparisler = hesaplaHammaddeSiparisler(d.acil_siparisler || []);
+    const actions = hammaddeSiparisler.length > 0
+      ? hammaddeSiparisler.map(h => `• ${h.hammadde} sipariş et (Etkilenen: ${h.etkilenenUrunler.slice(0,3).join(', ')})`).join('\n')
+      : (d.aylik_tedarik || d.siparis_onerileri || []).slice(0,3).map(t => `• ${t.malzeme || t.urun_adi} tedariği planla.`).join('\n');
     typeWriter(actions || 'Mevcut plan stabil görünüyor.', 'aiActions', 5);
   });
 
@@ -672,17 +819,48 @@ async function loadUrunSelect() {
     if(!r.ok) throw new Error();
     const d = await r.json();
     urunler = d.urunler;
-    populateSelects(urunler);
-  } catch(e) { populateSelects(stokData); }
+    populateSatisSelect(urunler);
+  } catch(e) { 
+    // Fallback demo verisi
+    const demoUrunler = [
+      {urun_id:'P001',urun_adi:'Çay'},
+      {urun_id:'P002',urun_adi:'Türk Kahvesi'},
+      {urun_id:'P003',urun_adi:'Latte'},
+      {urun_id:'P004',urun_adi:'Ice Latte'},
+      {urun_id:'P005',urun_adi:'Americano'}
+    ];
+    populateSatisSelect(demoUrunler);
+  }
 }
 
-function populateSelects(data) {
+async function loadHammaddeSelect() {
+  try {
+    const r = await fetch(API + '/hammaddeler');
+    if(!r.ok) throw new Error();
+    const d = await r.json();
+    populateStokSelect(d.hammaddeler);
+  } catch(e) {
+    // Fallback demo verisi
+    const demoHammaddeler = [
+      {hammadde_id:'H001',hammadde_adi:'Çay Yaprağı'},
+      {hammadde_id:'H004',hammadde_adi:'Türk Kahvesi Tozu'},
+      {hammadde_id:'H006',hammadde_adi:'Espresso Çekirdeği'},
+      {hammadde_id:'H007',hammadde_adi:'Süt'}
+    ];
+    populateStokSelect(demoHammaddeler);
+  }
+}
+
+function populateSatisSelect(data) {
   const sUrun = document.getElementById('satisUrun');
+  if(!sUrun) return;
+  sUrun.innerHTML = data.map(u=>`<option value="${u.urun_id||u.Urun_ID}">${u.urun_adi||u.Urun_Adi}</option>`).join('');
+}
+
+function populateStokSelect(data) {
   const sGiris = document.getElementById('stokGirisUrun');
-  if(!sUrun || !sGiris) return;
-  const opts = data.map(u=>`<option value="${u.urun_id||u.Urun_ID}">${u.urun_adi||u.Urun_Adi}</option>`).join('');
-  sUrun.innerHTML = opts;
-  sGiris.innerHTML = opts;
+  if(!sGiris) return;
+  sGiris.innerHTML = data.map(h=>`<option value="${h.hammadde_id}">${h.hammadde_adi}</option>`).join('');
 }
 
 // ── KAYIT ────────────────────────────────────────
@@ -762,20 +940,86 @@ function renderSiparisCards(d) {
   const uDetay = document.getElementById('uyariDetay');
   if(!sList || !uDetay) return;
 
-  sList.innerHTML = (d.acil_siparisler || []).map(s => `
-    <div class="alert alert-critical" style="border-left: 4px solid var(--red); background: rgba(248,81,73,0.05);">
-      <div class="alert-icon">⚡</div>
-      <div class="alert-body">
-        <div class="alert-title">${s.urun} — ${s.miktar} adet</div>
-        <div class="alert-desc">${s.neden}</div>
-      </div>
-    </div>`).join('') || '<div style="color:var(--green)">✅ Acil sipariş gerekmez.</div>';
+  // Hammadde bazlı sipariş önerileri oluştur
+  const hammaddeSiparisler = hesaplaHammaddeSiparisler(d.acil_siparisler || []);
+  
+  if (hammaddeSiparisler.length > 0) {
+    sList.innerHTML = `
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">
+        ⚙️ <strong>Hammadde siparişleri</strong> — Kahve, süt, bardak gibi malzemeleri sipariş edersiniz, içecek değil.
+      </div>` +
+      hammaddeSiparisler.map(s => `
+        <div class="alert alert-critical" style="border-left: 4px solid var(--red); background: rgba(248,81,73,0.05);">
+          <div class="alert-icon">⚡</div>
+          <div class="alert-body">
+            <div class="alert-title" style="color:var(--red)">${s.hammadde}</div>
+            <div class="alert-desc">${s.neden}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">📦 Etkilenen ürünler: ${s.etkilenenUrunler.join(', ')}</div>
+          </div>
+        </div>`).join('');
+  } else if ((d.acil_siparisler || []).length > 0) {
+    // Fallback: tarif eşleşmesi yoksa orijinal sipariş listesi
+    sList.innerHTML = (d.acil_siparisler || []).map(s => `
+      <div class="alert alert-critical" style="border-left: 4px solid var(--red); background: rgba(248,81,73,0.05);">
+        <div class="alert-icon">⚡</div>
+        <div class="alert-body">
+          <div class="alert-title">${s.urun}</div>
+          <div class="alert-desc">${s.neden}</div>
+        </div>
+      </div>`).join('');
+  } else {
+    sList.innerHTML = '<div style="color:var(--green)">✅ Acil sipariş gerekmez.</div>';
+  }
     
   uDetay.innerHTML = (d.acil_siparisler || []).map(s => `
     <div class="alert alert-warn">
       <div class="alert-icon">⚠️</div>
       <div class="alert-body"><div class="alert-title">Stok Risk Analizi</div><div class="alert-desc">${s.urun} pazar verilerine göre azalıyor.</div></div>
     </div>`).join('') || '<div style="color:var(--green)">✅ Kritik uyarı yok.</div>';
+}
+
+/**
+ * Acil sipariş listesindeki içecekleri hammaddelere dönüştürür.
+ * Aynı hammaddeyi kullanan birden fazla içecek varsa birleştirir.
+ */
+function hesaplaHammaddeSiparisler(acilSiparisler) {
+  const hammaddeMap = {}; // { hammadde: { etkilenenUrunler: Set, nedenler: [] } }
+  
+  acilSiparisler.forEach(s => {
+    const urunAdi = s.urun || s.urun_adi;
+    const hammaddeler = URUN_HAMMADDE[urunAdi] || [];
+    
+    if (hammaddeler.length === 0) {
+      // Tarif bulunamazsa hammadde adıyla kaydet
+      if (!hammaddeMap[urunAdi]) {
+        hammaddeMap[urunAdi] = { etkilenenUrunler: new Set([urunAdi]), nedenler: [s.neden] };
+      }
+      return;
+    }
+    
+    hammaddeler.forEach(h => {
+      if (!hammaddeMap[h]) {
+        hammaddeMap[h] = { etkilenenUrunler: new Set(), nedenler: [] };
+      }
+      hammaddeMap[h].etkilenenUrunler.add(urunAdi);
+      // Aynı hammaddeyi kullanan diğer etkilenen içecekler
+      (HAMMADDE_KULLANIM[h] || []).forEach(etkilenen => {
+        // Sadece stokData'da gerçekten var olan ürünleri ekle
+        if (stokData.find(u => u.urun_adi === etkilenen)) {
+          hammaddeMap[h].etkilenenUrunler.add(etkilenen);
+        }
+      });
+      if (s.neden && !hammaddeMap[h].nedenler.includes(s.neden)) {
+        hammaddeMap[h].nedenler.push(s.neden);
+      }
+    });
+  });
+  
+  return Object.entries(hammaddeMap).map(([hammadde, info]) => ({
+    hammadde,
+    etkilenenUrunler: [...info.etkilenenUrunler],
+    neden: info.nedenler.join('; ') || 'Kritik stok seviyesi',
+  }));
 }
 
 function handleCSV(input, type) {
