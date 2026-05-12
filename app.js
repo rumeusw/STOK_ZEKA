@@ -585,7 +585,6 @@ async function runTahmin() {
 
     if(d.haftalik_tahmin) {
         renderTahminGrid(d.haftalik_tahmin);
-        computeMalzemeHafta(d.haftalik_tahmin);
     } else {
         renderDemoTahmin();
     }
