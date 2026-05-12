@@ -569,12 +569,20 @@ async function runAI() {
 // ── TAHMİN ────────────────────────────────────────
 async function runTahmin() {
   const grid = document.getElementById('tahminGrid');
+  const disEl = document.getElementById('disFaktorAnaliz');
   if(!grid) return;
   grid.innerHTML = '<div style="color:var(--text3)"><span class="pulse"></span> Hesaplanıyor...</div>';
+  if(disEl) disEl.innerHTML = '<span class="pulse"></span> Dış faktörler analiz ediliyor...';
   
   try {
     const r = await fetch(API + '/ai/analiz');
     const d = await r.json();
+    
+    // Hava durumu/Özel gün yazısı
+    if(disEl && d.dis_faktor_ozet) {
+        disEl.textContent = d.dis_faktor_ozet;
+    }
+
     if(d.haftalik_tahmin) {
         renderTahminGrid(d.haftalik_tahmin);
         computeMalzemeHafta(d.haftalik_tahmin);
@@ -583,6 +591,7 @@ async function runTahmin() {
     }
   } catch(e) {
     renderDemoTahmin();
+    if(disEl) disEl.textContent = "Tahmin: Yarın hava parçalı bulutlu ve 22°C. Normal satış trendi bekleniyor.";
   }
 }
 

@@ -226,8 +226,34 @@ def ai_analiz():
         else:
             mesaj += "Tüm hammadde stokları güvenli seviyede."
 
+        # 3. DIŞ FAKTÖR ANALİZİ (Hava Durumu ve Özel Günler)
+        cursor.execute("""
+            SELECT Hava_Durumu, Sicaklik, Kampanya_Var_Mi, Kampanya_Turu 
+            FROM DisFaktorler 
+            WHERE Tarih >= date('now') 
+            ORDER BY Tarih ASC LIMIT 1
+        """)
+        dis_faktor = cursor.fetchone()
+        
+        dis_faktor_mesaj = "Gelecek günler için hava durumu verisi bulunamadı."
+        if dis_faktor:
+            durum = dis_faktor["Hava_Durumu"]
+            sicaklik = dis_faktor["Sicaklik"]
+            kampanya = dis_faktor["Kampanya_Var_Mi"]
+            tur = dis_faktor["Kampanya_Turu"]
+            
+            dis_faktor_mesaj = f"Tahmin: Hava {durum.lower()} ve sıcaklık {sicaklik}°C civarında seyredecek. "
+            if sicaklik > 25:
+                dis_faktor_mesaj += "Sıcak hava nedeniyle soğuk içecek (Ice Latte, Limonata) talebinde artış bekleniyor. "
+            elif sicaklik < 12:
+                dis_faktor_mesaj += "Serin hava nedeniyle sıcak içecek (Filtre Kahve, Çay) tüketimi yoğunlaşabilir. "
+                
+            if kampanya:
+                dis_faktor_mesaj += f"Sistemde '{tur}' kampanyası tanımlı. Müşteri trafiğinde ek artış öngörülüyor."
+
         return {
             "ozet": mesaj,
+            "dis_faktor_ozet": dis_faktor_mesaj,
             "acil_siparisler": acil_siparisler,
             "tahmin_detay": {
                 "hafta_sonu_katsayisi": round(hafta_sonu_artis_orani, 2),
