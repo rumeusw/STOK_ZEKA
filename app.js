@@ -620,28 +620,59 @@ function renderTahminGrid(tahminler) {
 function computeMalzemeHafta(tahminler) {
   const RECIPE = {
     'Çay': {'Çay Yaprağı (g)': 3, 'Su (ml)': 200, 'Bardak (S)': 1},
+    'Türk Kahvesi': {'Türk Kahvesi Tozu (g)': 7, 'Su (ml)': 80, 'Fincan': 1},
     'Latte': {'Espresso Çekirdeği (g)': 18, 'Süt (ml)': 200, 'Bardak (M)': 1},
     'Ice Latte': {'Espresso Çekirdeği (g)': 18, 'Süt (ml)': 180, 'Buz (g)': 80, 'Bardak (L)': 1, 'Pipet': 1},
     'Americano': {'Espresso Çekirdeği (g)': 18, 'Su (ml)': 180, 'Bardak (M)': 1},
     'Ice Americano': {'Espresso Çekirdeği (g)': 18, 'Su (ml)': 150, 'Buz (g)': 100, 'Bardak (L)': 1, 'Pipet': 1},
     'Cappuccino': {'Espresso Çekirdeği (g)': 18, 'Süt (ml)': 120, 'Bardak (M)': 1},
-    'Mocha': {'Espresso Çekirdeği (g)': 18, 'Süt (ml)': 180, 'Çikolata Sosu (ml)': 20, 'Bardak (M)': 1},
-    'Türk Kahvesi': {'Türk Kahvesi Tozu (g)': 7, 'Su (ml)': 80, 'Fincan': 1},
     'Limonata': {'Limon (adet)': 1.5, 'Şeker (g)': 20, 'Su (ml)': 250, 'Buz (g)': 60, 'Pipet': 1},
     'Espresso': {'Espresso Çekirdeği (g)': 18, 'Fincan': 1},
     'Filtre Kahve': {'Filtre Kahve Tozu (g)': 15, 'Su (ml)': 250, 'Bardak (M)': 1},
+    'Mocha': {'Espresso Çekirdeği (g)': 18, 'Süt (ml)': 180, 'Çikolata Sosu (ml)': 20, 'Bardak (M)': 1},
+    'Menengiç Kahvesi': {'Menengiç (g)': 10, 'Süt (ml)': 80, 'Fincan': 1},
+    'Sıcak Çikolata': {'Kakao Tozu (g)': 20, 'Süt (ml)': 200, 'Şeker (g)': 10, 'Bardak (M)': 1},
+    'Salep': {'Salep Tozu (g)': 8, 'Süt (ml)': 200, 'Tarçın (g)': 1, 'Bardak (M)': 1},
+    'Flat White': {'Espresso Çekirdeği (g)': 18, 'Süt (ml)': 130, 'Bardak (M)': 1},
+    'Cortado': {'Espresso Çekirdeği (g)': 18, 'Süt (ml)': 30, 'Fincan': 1},
+    'Chai Tea Latte': {'Chai Mix (g)': 15, 'Süt (ml)': 200, 'Tarçın (g)': 0.5, 'Bardak (M)': 1},
+    'Kış Çayı': {'Bitki Mix (g)': 5, 'Bal (ml)': 10, 'Su (ml)': 250, 'Limon (dilim)': 1, 'Bardak (M)': 1},
+    'Soğuk Çay': {'Çay Özü (ml)': 30, 'Su (ml)': 200, 'Buz (g)': 100, 'Şurup (ml)': 10, 'Bardak (L)': 1, 'Pipet': 1},
+    'Frappe': {'Filtre Kahve Tozu (g)': 10, 'Süt (ml)': 100, 'Buz (g)': 150, 'Bardak (L)': 1, 'Pipet': 1},
+    'Milkshake': {'Süt (ml)': 200, 'Dondurma (g)': 100, 'Şeker (g)': 10, 'Bardak (L)': 1, 'Pipet': 1},
+    'Iced Mocha': {'Espresso Çekirdeği (g)': 18, 'Süt (ml)': 150, 'Çikolata Sosu (ml)': 20, 'Buz (g)': 100, 'Bardak (L)': 1, 'Pipet': 1},
+    'Portakal Suyu': {'Portakal (adet)': 3, 'Bardak (M)': 1, 'Pipet': 1},
+    'Churchill': {'Soda (ml)': 200, 'Limon (adet)': 0.5, 'Tuz (g)': 1, 'Bardak (M)': 1},
+    'Frozen': {'Meyve Özü (ml)': 50, 'Buz (g)': 200, 'Şurup (ml)': 20, 'Bardak (L)': 1, 'Pipet': 1},
     'San Sebastian': {'Krem Peynir (g)': 60, 'Yumurta (adet)': 0.5, 'Krema (ml)': 40},
-    'Kruvasan': {'Un (g)': 80, 'Tereyağı (g)': 20},
     'Tiramisu': {'Maskarpone (g)': 50, 'Bisküvi (g)': 30, 'Espresso Çekirdeği (g)': 5},
     'Brownie': {'Çikolata (g)': 40, 'Tereyağı (g)': 30, 'Un (g)': 20, 'Yumurta (adet)': 0.5},
+    'Havuçlu Tarçınlı Kek': {'Havuç (g)': 30, 'Un (g)': 40, 'Tarçın (g)': 2, 'Ceviz (g)': 5},
+    'Sufle': {'Çikolata (g)': 50, 'Un (g)': 15, 'Yumurta (adet)': 1},
+    'Çikolatalı Cookie': {'Hamur (g)': 60, 'Çikolata Parçacığı (g)': 15},
+    'Kruvasan': {'Un (g)': 80, 'Tereyağı (g)': 20},
+    'Profiterol': {'Hamur (g)': 30, 'Krema (g)': 40, 'Çikolata Sosu (g)': 30}
   };
+
   const totals = {};
+  const normalize = (s) => s.trim().toLowerCase();
+  const recipeKeys = Object.keys(RECIPE);
+
   tahminler.forEach(t => {
     const urunAdi = (t.urun || t.urun_adi || '').trim();
-    const recipe = RECIPE[urunAdi] || {};
     const qty = t.haftalik || t.tahmini_satis || 0;
-    Object.entries(recipe).forEach(([k,v]) => { totals[k] = (totals[k]||0) + v*qty; });
+    
+    // Case-insensitive match
+    const key = recipeKeys.find(k => normalize(k) === normalize(urunAdi));
+    const recipe = key ? RECIPE[key] : null;
+
+    if (recipe) {
+      Object.entries(recipe).forEach(([k, v]) => {
+        totals[k] = (totals[k] || 0) + (v * qty);
+      });
+    }
   });
+
   renderMalzemeHafta(totals);
 }
 
@@ -760,20 +791,33 @@ function renderAylikTedarikFromData(data) {
 async function loadUretim() {
   const el = document.getElementById('uretimGrid');
   if(!el) return;
-  el.innerHTML = stokData.map(u => {
-    const maxPor = u.mevcut_stok;
-    const pct = Math.min(100, Math.round((u.mevcut_stok / Math.max(u.kritik_esik*3,1))*100));
-    const col = u.durum==='Kritik'?'var(--red)':u.durum==='Düşük'?'var(--amber)':'var(--blue)';
-    return `<div class="forecast-card">
-      <div class="forecast-name">${u.urun_adi}</div>
-      <div class="forecast-val" style="color:${col}">${maxPor}</div>
-      <div class="forecast-row"><span>Mevcut stok</span><span class="badge ${u.durum==='Kritik'?'badge-red':u.durum==='Düşük'?'badge-amber':'badge-green'}">${u.durum}</span></div>
-      <div style="margin-top:6px">
-        <div class="stock-bar"><div class="stock-fill" style="width:${pct}%;background:${col}"></div></div>
-        <div style="font-size:10px;color:var(--text3);margin-top:2px">Kapasite: ${pct}%</div>
-      </div>
-    </div>`;
-  }).join('');
+  
+  try {
+    const r = await fetch(API + '/api/uretilebilir-urunler');
+    if(!r.ok) throw new Error();
+    const d = await r.json();
+    
+    el.innerHTML = d.urunler.map(u => {
+      const maxPor = u.max_porsiyon;
+      const col = u.durum==='Kritik'?'var(--red)':u.durum==='Düşük'?'var(--amber)':'var(--blue)';
+      const badge = u.durum==='Kritik'?'badge-red':u.durum==='Düşük'?'badge-amber':'badge-green';
+      
+      // Doluluk oranını porsiyon sayısına göre (max 100 üzerinden) gösterelim
+      const pct = Math.min(100, Math.round((maxPor / 100) * 100));
+      
+      return `<div class="forecast-card">
+        <div class="forecast-name">${u.urun_adi}</div>
+        <div class="forecast-val" style="color:${col}">${maxPor}</div>
+        <div class="forecast-row"><span>Üretilebilecek</span><span class="badge ${badge}">${u.durum}</span></div>
+        <div style="margin-top:6px">
+          <div class="stock-bar"><div class="stock-fill" style="width:${pct}%;background:${col}"></div></div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px">Porsiyon Kapasitesi</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--text3); padding:20px;">Üretim verileri yüklenemedi.</div>';
+  }
 }
 
 // ── TARİFLER ─────────────────────────────────────

@@ -251,10 +251,27 @@ def ai_analiz():
             if kampanya:
                 dis_faktor_mesaj += f"Sistemde '{tur}' kampanyası tanımlı. Müşteri trafiğinde ek artış öngörülüyor."
 
+        # 4. HAFTALIK SATIŞ TAHMİNİ (Ürün Bazlı)
+        cursor.execute("SELECT Urun_Adi FROM Urunler")
+        urun_listesi = [r["Urun_Adi"] for r in cursor.fetchall()]
+        
+        # Basit bir tahmin mantığı: Ortalama satış + Hafta sonu çarpanı + Rastgelelik
+        haftalik_tahmin = []
+        for urun in urun_listesi:
+            base_satis = 150 if yarın_hafta_sonu_mu else 100
+            # Rastgele bir tahmin oluştur (Gerçek projede burada ML modeli olur)
+            t_satis = int(base_satis * hafta_sonu_artis_orani * (0.8 + (datetime.now().microsecond % 40) / 100))
+            haftalik_tahmin.append({
+                "urun_adi": urun,
+                "haftalik": t_satis,
+                "trend": "artiyor" if hafta_sonu_artis_orani > 1.1 else "stabil"
+            })
+
         return {
             "ozet": mesaj,
             "dis_faktor_ozet": dis_faktor_mesaj,
             "acil_siparisler": acil_siparisler,
+            "haftalik_tahmin": haftalik_tahmin,
             "tahmin_detay": {
                 "hafta_sonu_katsayisi": round(hafta_sonu_artis_orani, 2),
                 "yarın_riskli_mi": yarın_hafta_sonu_mu
@@ -380,6 +397,67 @@ def get_finans_analiz():
             "net_kar": net_kar,
             "brut_kar_marji": round(brut_kar_marji, 2)
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+@app.get("/api/uretilebilir-urunler")
+def get_uretilebilir_urunler():
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        
+        # 1. Mevcut hammadde stoklarını al
+        cursor.execute("""
+            SELECT h.Hammadde_ID, h.Hammadde_Adi, COALESCE(SUM(sh.Miktar), 0) as stok
+            FROM Hammaddeler h
+            LEFT JOIN Stok_Hareketleri sh ON h.Hammadde_ID = sh.Hammadde_ID
+            GROUP BY h.Hammadde_ID
+        """)
+        stoklar = {row["Hammadde_ID"]: row["stok"] for row in cursor.fetchall()}
+        
+        # 2. Ürünleri ve tariflerini al
+        cursor.execute("SELECT Urun_ID, Urun_Adi FROM Urunler")
+        urunler = cursor.fetchall()
+        
+        sonuc = []
+        for urun in urunler:
+            u_id = urun["Urun_ID"]
+            u_adi = urun["Urun_Adi"]
+            
+            cursor.execute("SELECT Hammadde_ID, Miktar FROM Tarifler WHERE Urun_ID = ?", (u_id,))
+            tarif = cursor.fetchall()
+            
+            if not tarif:
+                continue
+                
+            # Kaç porsiyon üretilebilir? (En kısıtlı hammaddeye göre)
+            porsiyonlar = []
+            for bilesen in tarif:
+                h_id = bilesen["Hammadde_ID"]
+                gereken = bilesen["Miktar"]
+                mevcut = stoklar.get(h_id, 0)
+                
+                if gereken > 0:
+                    porsiyonlar.append(int(mevcut // gereken))
+                else:
+                    porsiyonlar.append(999) # Limit yok
+            
+            max_porsiyon = min(porsiyonlar) if porsiyonlar else 0
+            
+            # Durum belirle (basit mantık)
+            if max_porsiyon < 10: durum = "Kritik"
+            elif max_porsiyon < 30: durum = "Düşük"
+            else: durum = "Yeterli"
+            
+            sonuc.append({
+                "urun_adi": u_adi,
+                "max_porsiyon": max_porsiyon,
+                "durum": durum
+            })
+            
+        return {"urunler": sonuc}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

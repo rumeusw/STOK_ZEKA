@@ -400,14 +400,14 @@
     <!-- STOK SAYFASI -->
     <div id="page-stok" class="page">
       <div class="page-header">
-        <div><div class="page-title">Stok Durumu</div><div class="page-sub">Tüm ürünlerin anlık stok seviyeleri</div></div>
-        <input type="text" id="stokSearch" placeholder="🔍 Ürün ara..." style="width:220px" oninput="filterStok(this.value)">
+        <div><div class="page-title">Stok Durumu</div><div class="page-sub">Tüm hammaddelerin anlık stok seviyeleri</div></div>
+        <input type="text" id="stokSearch" placeholder="🔍 Hammadde ara..." style="width:220px" oninput="filterStok(this.value)">
       </div>
       <div class="card">
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>Ürün</th><th>Mevcut Stok</th><th>Kritik Eşik</th><th>Doluluk</th><th>Durum</th><th>Tedarikçi</th><th>Tedarik (gün)</th>
+              <th>Hammadde / Malzeme</th><th>Mevcut Stok</th><th>Kritik Eşik</th><th>Doluluk</th><th>Durum</th><th>Tedarikçi</th><th>Tedarik (gün)</th>
             </tr></thead>
             <tbody id="stokTable"><tr><td colspan="7" style="color:var(--text3)">Yükleniyor...</td></tr></tbody>
           </table>
@@ -1188,25 +1188,35 @@ function renderAylikTedarik(list) {
 
 // ── ÜRÜNLER / ÜRETİM ─────────────────────────────
 async function loadUretim() {
-  const RECIPE = {
-    'Çay':{min:['Çay Yaprağı'],stock:stokData.find(u=>u.urun_adi==='Çay')?.mevcut_stok||0,perUnit:3},
-    'Latte':{perUnit:18,stock:stokData.find(u=>u.urun_adi==='Latte')?.mevcut_stok||0},
-  };
   const el = document.getElementById('uretimGrid');
-  el.innerHTML = stokData.map(u => {
-    const maxPor = u.mevcut_stok;
-    const pct = Math.min(100, Math.round((u.mevcut_stok / Math.max(u.kritik_esik*3,1))*100));
-    const col = u.durum==='Kritik'?'var(--red)':u.durum==='Düşük'?'var(--amber)':'var(--blue)';
-    return `<div class="forecast-card">
-      <div class="forecast-name">${u.urun_adi}</div>
-      <div class="forecast-val" style="color:${col}">${maxPor}</div>
-      <div class="forecast-row"><span>Mevcut stok</span><span class="badge ${u.durum==='Kritik'?'badge-red':u.durum==='Düşük'?'badge-amber':'badge-green'}">${u.durum}</span></div>
-      <div style="margin-top:6px">
-        <div class="stock-bar"><div class="stock-fill" style="width:${pct}%;background:${col}"></div></div>
-        <div style="font-size:10px;color:var(--text3);margin-top:2px">Kapasite: ${pct}%</div>
-      </div>
-    </div>`;
-  }).join('');
+  if(!el) return;
+  
+  try {
+    const r = await fetch(API + '/api/uretilebilir-urunler');
+    if(!r.ok) throw new Error();
+    const d = await r.json();
+    
+    el.innerHTML = d.urunler.map(u => {
+      const maxPor = u.max_porsiyon;
+      const col = u.durum==='Kritik'?'var(--red)':u.durum==='Düşük'?'var(--amber)':'var(--blue)';
+      const badge = u.durum==='Kritik'?'badge-red':u.durum==='Düşük'?'badge-amber':'badge-green';
+      
+      // Doluluk oranını porsiyon sayısına göre (max 100 üzerinden) gösterelim
+      const pct = Math.min(100, Math.round((maxPor / 100) * 100));
+      
+      return `<div class="forecast-card">
+        <div class="forecast-name">${u.urun_adi}</div>
+        <div class="forecast-val" style="color:${col}">${maxPor}</div>
+        <div class="forecast-row"><span>Üretilebilecek</span><span class="badge ${badge}">${u.durum}</span></div>
+        <div style="margin-top:6px">
+          <div class="stock-bar"><div class="stock-fill" style="width:${pct}%;background:${col}"></div></div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px">Porsiyon Kapasitesi</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--text3); padding:20px;">Üretim verileri yüklenemedi.</div>';
+  }
 }
 
 // ── TARİFLER ─────────────────────────────────────
