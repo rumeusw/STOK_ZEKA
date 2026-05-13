@@ -256,18 +256,39 @@
     <!-- TAHMİN -->
     <div id="page-tahmin" class="page">
       <div class="page-header">
-        <div><div class="page-title">📈 Bu Hafta Tahminleri</div><div class="page-sub">AI ile haftalık satış ve malzeme tahmini</div></div>
-        <button class="btn btn-primary" onclick="runTahmin()">🔮 Tahmin Hesapla</button>
+        <div><div class="page-title">🔮 AI Tahmin Merkezi</div><div class="page-sub">Gelecek hafta satış ve malzeme ihtiyacı analizi</div></div>
+        <button class="btn btn-primary" onclick="runTahmin()">🔮 Analizi Başlat</button>
       </div>
-      <div id="tahminContent">
-        <div class="card" style="margin-bottom:16px">
-          <div style="font-size:14px;font-weight:500;margin-bottom:12px">Haftalık Satış Tahmini (AI)</div>
-          <div id="tahminGrid" class="forecast-grid"><div style="color:var(--text3)">Tahmin için butona basın...</div></div>
+      
+      <!-- Öne Çıkan Dış Faktörler -->
+      <div id="disFaktorPanel" class="ai-panel" style="padding: 18px; margin-bottom: 20px; border-left: 5px solid var(--cyan); background: rgba(118, 227, 234, 0.05);">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+          <span style="font-size:24px;">🌦️</span>
+          <div>
+            <div style="font-size:14px; font-weight:700; color:var(--cyan); text-transform:uppercase; letter-spacing:1px;">Dış Faktörler ve Özel Gün Analizi</div>
+            <div id="disFaktorAnaliz" style="color:var(--text); font-size:14px; margin-top:4px; line-height:1.5;">
+              Tahmin motoru hazır. Analiz başlatmak için butona tıklayın.
+            </div>
+          </div>
         </div>
-        <div class="card" style="margin-bottom:16px; border-left: 3px solid var(--cyan);">
-          <div style="font-size:14px;font-weight:500;margin-bottom:12px;color:var(--cyan)">🌦️ Dış Faktörler ve Özel Gün Analizi</div>
-          <div id="disFaktorAnaliz" style="color:var(--text2); font-size:13px; line-height:1.6;">
-            Analiz bekleniyor...
+      </div>
+
+      <div class="grid-2" style="grid-template-columns: 2fr 1fr; align-items: start;">
+        <div class="card">
+          <div style="font-size:14px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+            <span>📈</span> Haftalık Ürün Satış Tahmini
+          </div>
+          <div id="tahminGrid" class="forecast-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+            <div style="color:var(--text3); padding:20px; text-align:center; grid-column: 1/-1;">Tahmin için "Analizi Başlat" butonuna basın...</div>
+          </div>
+        </div>
+
+        <div class="card" style="background: rgba(88, 166, 255, 0.03); border-color: rgba(88, 166, 255, 0.2);">
+          <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--blue);display:flex;align-items:center;gap:6px;">
+            <span>📦</span> Malzeme İhtiyaç Tahmini
+          </div>
+          <div id="malzemeHafta" style="font-size:12px;">
+            <div style="color:var(--text3); font-style:italic;">Satış tahminlerine göre hesaplanacak...</div>
           </div>
         </div>
       </div>

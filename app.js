@@ -617,16 +617,21 @@ function renderTahminGrid(tahminler) {
 
 function computeMalzemeHafta(tahminler) {
   const RECIPE = {
-    'Çay': {'Çay Yaprağı (g)': 3, 'Su (ml)': 200},
-    'Latte': {'Espresso Çekirdeği (g)': 18, 'Süt (ml)': 200},
-    'Ice Latte': {'Espresso Çekirdeği (g)': 18, 'Süt (ml)': 180, 'Buz (g)': 80},
-    'Americano': {'Espresso Çekirdeği (g)': 18, 'Su (ml)': 180},
-    'Cappuccino': {'Espresso Çekirdeği (g)': 18, 'Süt (ml)': 120},
-    'Mocha': {'Espresso Çekirdeği (g)': 18, 'Süt (ml)': 180, 'Çikolata Sosu (ml)': 20},
-    'Türk Kahvesi': {'Türk Kahvesi Tozu (g)': 7, 'Su (ml)': 80},
-    'Limonata': {'Limon (adet)': 1.5, 'Şeker (g)': 20, 'Su (ml)': 250},
-    'Kruvasan': {'Un (g)': 80},
-    'Tiramisu': {'Maskarpone (g)': 50, 'Espresso Çekirdeği (g)': 5},
+    'Çay': {'Çay Yaprağı (g)': 3, 'Su (ml)': 200, 'Bardak (S)': 1},
+    'Latte': {'Espresso Çekirdeği (g)': 18, 'Süt (ml)': 200, 'Bardak (M)': 1},
+    'Ice Latte': {'Espresso Çekirdeği (g)': 18, 'Süt (ml)': 180, 'Buz (g)': 80, 'Bardak (L)': 1, 'Pipet': 1},
+    'Americano': {'Espresso Çekirdeği (g)': 18, 'Su (ml)': 180, 'Bardak (M)': 1},
+    'Ice Americano': {'Espresso Çekirdeği (g)': 18, 'Su (ml)': 150, 'Buz (g)': 100, 'Bardak (L)': 1, 'Pipet': 1},
+    'Cappuccino': {'Espresso Çekirdeği (g)': 18, 'Süt (ml)': 120, 'Bardak (M)': 1},
+    'Mocha': {'Espresso Çekirdeği (g)': 18, 'Süt (ml)': 180, 'Çikolata Sosu (ml)': 20, 'Bardak (M)': 1},
+    'Türk Kahvesi': {'Türk Kahvesi Tozu (g)': 7, 'Su (ml)': 80, 'Fincan': 1},
+    'Limonata': {'Limon (adet)': 1.5, 'Şeker (g)': 20, 'Su (ml)': 250, 'Buz (g)': 60, 'Pipet': 1},
+    'Espresso': {'Espresso Çekirdeği (g)': 18, 'Fincan': 1},
+    'Filtre Kahve': {'Filtre Kahve Tozu (g)': 15, 'Su (ml)': 250, 'Bardak (M)': 1},
+    'San Sebastian': {'Krem Peynir (g)': 60, 'Yumurta (adet)': 0.5, 'Krema (ml)': 40},
+    'Kruvasan': {'Un (g)': 80, 'Tereyağı (g)': 20},
+    'Tiramisu': {'Maskarpone (g)': 50, 'Bisküvi (g)': 30, 'Espresso Çekirdeği (g)': 5},
+    'Brownie': {'Çikolata (g)': 40, 'Tereyağı (g)': 30, 'Un (g)': 20, 'Yumurta (adet)': 0.5},
   };
   const totals = {};
   tahminler.forEach(t => {
@@ -641,19 +646,25 @@ function renderMalzemeHafta(totals) {
   const el = document.getElementById('malzemeHafta');
   if (!el) return;
   if (!totals || !Object.keys(totals).length) { el.innerHTML = '<div style="color:var(--text3)">Hesaplanamadı</div>'; return; }
-  const sorted = Object.entries(totals).sort((a,b)=>b[1]-a[1]).slice(0,15);
-  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">`
-    + sorted.map(([k,v]) => `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center">
-      <span style="font-size:12px;color:var(--text2)">${k}</span>
-      <span style="font-size:13px;font-weight:600;color:var(--blue)">${Math.round(v).toLocaleString()}</span>
-    </div>`).join('') + '</div>';
+  const sorted = Object.entries(totals).sort((a,b)=>b[1]-a[1]).slice(0,25);
+  el.innerHTML = `<div style="display:flex; flex-direction:column; gap:6px;">`
+    + sorted.map(([k,v]) => {
+      let unit = k.includes('(') ? k.split('(')[1].replace(')','') : '';
+      let name = k.split('(')[0].trim();
+      return `
+      <div style="background:var(--bg3); border-left:2px solid var(--blue); padding:6px 10px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="font-size:11px; color:var(--text2);">${name}</div>
+        <div style="font-size:12px; font-weight:600; color:var(--blue);">${Math.round(v).toLocaleString()} <span style="font-size:9px; opacity:0.7;">${unit}</span></div>
+      </div>`;
+    }).join('') + '</div>';
 }
 
 function renderDemoTahmin() {
-  const demo = stokData.map(u => ({
-    urun: u.urun_adi,
-    tahmini_satis: Math.round(Math.random()*300+100),
-    gunluk_ortalama: Math.round(Math.random()*40+15),
+  const targetData = (urunler && urunler.length) ? urunler : stokData;
+  const demo = targetData.map(u => ({
+    urun: u.urun_adi || u.Urun_Adi,
+    tahmini_satis: Math.round(Math.random()*200+50),
+    gunluk_ortalama: Math.round(Math.random()*30+10),
     trend: ['artiyor','stabil','azaliyor'][Math.floor(Math.random()*3)]
   }));
   renderTahminGrid(demo);
