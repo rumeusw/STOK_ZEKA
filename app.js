@@ -577,19 +577,21 @@ async function runTahmin() {
   
   try {
     const r = await fetch(API + '/ai/analiz');
+    if (!r.ok) throw new Error('API hatası');
     const d = await r.json();
     
-    // Hava durumu/Özel gün yazısı
     if(disEl && d.dis_faktor_ozet) {
         disEl.textContent = d.dis_faktor_ozet;
     }
 
-    if(d.haftalik_tahmin) {
+    if(d.haftalik_tahmin && d.haftalik_tahmin.length > 0) {
         renderTahminGrid(d.haftalik_tahmin);
+        computeMalzemeHafta(d.haftalik_tahmin);
     } else {
         renderDemoTahmin();
     }
   } catch(e) {
+    console.error('Tahmin hatası:', e);
     renderDemoTahmin();
     if(disEl) disEl.textContent = "Tahmin: Yarın hava parçalı bulutlu ve 22°C. Normal satış trendi bekleniyor.";
   }
@@ -598,7 +600,7 @@ async function runTahmin() {
 function renderTahminGrid(tahminler) {
   const el = document.getElementById('tahminGrid');
   if (!el) return;
-  if (!tahminler || !tahminler.length) { el.innerHTML = '<div style="color:var(--text3)">Veri yok</div>'; return; }
+  if (!tahminler || !tahminler.length) { el.innerHTML = '<div style="color:var(--text3); padding:20px; text-align:center; grid-column:1/-1;">Veri yok</div>'; return; }
   el.innerHTML = tahminler.map(t => {
     const urun = t.urun || t.urun_adi;
     const satis = t.tahmini_satis || t.haftalik || 0;
@@ -635,7 +637,8 @@ function computeMalzemeHafta(tahminler) {
   };
   const totals = {};
   tahminler.forEach(t => {
-    const recipe = RECIPE[t.urun || t.urun_adi] || {};
+    const urunAdi = (t.urun || t.urun_adi || '').trim();
+    const recipe = RECIPE[urunAdi] || {};
     const qty = t.haftalik || t.tahmini_satis || 0;
     Object.entries(recipe).forEach(([k,v]) => { totals[k] = (totals[k]||0) + v*qty; });
   });
