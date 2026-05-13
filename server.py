@@ -297,47 +297,78 @@ def get_finans_analiz():
     try:
         cursor = conn.cursor()
         
-        # Ürün bazlı maliyet ve satış analizi
-        # Maliyet = Tarifteki her bir hammadde * Hammadde birim maliyeti
-        # Not: Veritabanındaki maliyetler paket bazlı olduğu için 0.1 ile çarpılarak birim maliyete indirgenmiştir (Heuristic)
-        query = """
-        SELECT
-            u.Urun_Adi as urun_adi,
-            AVG(s.Birim_Fiyat_TL) as ortalama_satis_fiyat,
-            (
-                SELECT SUM(t.Miktar * ht.Birim_Maliyet_TL) * 0.1
-                FROM Tarifler t
-                JOIN Hammadde_Tedarik ht ON t.Hammadde_ID = ht.Hammadde_ID
-                WHERE t.Urun_ID = u.Urun_ID
-            ) as birim_maliyet
-        FROM Urunler u
-        LEFT JOIN Satislar s ON u.Urun_ID = s.Urun_ID
-        GROUP BY u.Urun_ID
-        """
-        cursor.execute(query)
+        # Kullanıcının talep ettiği sabit birim maliyet ve satış fiyatları
+        FIXED_VALUES = {
+            "Çay": {"maliyet": 12, "satis": 45},
+            "Türk Kahvesi": {"maliyet": 28, "satis": 95},
+            "Latte": {"maliyet": 52, "satis": 140},
+            "Ice Latte": {"maliyet": 68, "satis": 155},
+            "Americano": {"maliyet": 32, "satis": 125},
+            "Ice Americano": {"maliyet": 38, "satis": 140},
+            "Cappuccino": {"maliyet": 50, "satis": 140},
+            "Limonata": {"maliyet": 35, "satis": 110},
+            "Espresso": {"maliyet": 20, "satis": 90},
+            "Filtre Kahve": {"maliyet": 30, "satis": 115},
+            "Mocha": {"maliyet": 65, "satis": 160},
+            "Menengiç Kahvesi": {"maliyet": 24, "satis": 105},
+            "Sıcak Çikolata": {"maliyet": 55, "satis": 140},
+            "Salep": {"maliyet": 60, "satis": 155},
+            "Flat White": {"maliyet": 48, "satis": 145},
+            "Cortado": {"maliyet": 26, "satis": 135},
+            "Chai Tea Latte": {"maliyet": 58, "satis": 160},
+            "Kış Çayı": {"maliyet": 25, "satis": 130},
+            "Soğuk Çay": {"maliyet": 32, "satis": 110},
+            "Frappe": {"maliyet": 72, "satis": 175},
+            "Milkshake": {"maliyet": 78, "satis": 185},
+            "Iced Mocha": {"maliyet": 75, "satis": 180},
+            "Portakal Suyu": {"maliyet": 40, "satis": 150},
+            "Churchill": {"maliyet": 18, "satis": 95},
+            "Frozen": {"maliyet": 85, "satis": 165},
+            "San Sebastian": {"maliyet": 95, "satis": 280},
+            "Tiramisu": {"maliyet": 82, "satis": 240},
+            "Brownie": {"maliyet": 60, "satis": 220},
+            "Havuçlu Tarçınlı Kek": {"maliyet": 55, "satis": 185},
+            "Sufle": {"maliyet": 70, "satis": 210},
+            "Çikolatalı Cookie": {"maliyet": 38, "satis": 110},
+            "Kruvasan": {"maliyet": 58, "satis": 145},
+            "Profiterol": {"maliyet": 88, "satis": 195}
+        }
+
+        # Ürün listesini ve toplam satış adetlerini al
+        cursor.execute("""
+            SELECT 
+                u.Urun_Adi as urun_adi,
+                COALESCE(SUM(s.Adet), 0) as toplam_adet
+            FROM Urunler u
+            LEFT JOIN Satislar s ON u.Urun_ID = s.Urun_ID
+            GROUP BY u.Urun_ID
+        """)
         rows = cursor.fetchall()
 
-        cursor.execute("SELECT SUM(Toplam_Satis_TL) FROM Satislar")
-        toplam_ciro = cursor.fetchone()[0] or 0
-
-        # Gerçekleşen toplam maliyeti satışlar üzerinden hesaplıyoruz (0.1 katsayısı ile)
-        cursor.execute("""
-            SELECT SUM(s.Adet * (
-                SELECT SUM(t.Miktar * ht.Birim_Maliyet_TL) * 0.1
-                FROM Tarifler t
-                JOIN Hammadde_Tedarik ht ON t.Hammadde_ID = ht.Hammadde_ID
-                WHERE t.Urun_ID = s.Urun_ID
-            )) as toplam_maliyet
-            FROM Satislar s
-        """)
-        toplam_maliyet = cursor.fetchone()[0] or 0
-
         analiz = []
+        toplam_ciro = 0
+        toplam_maliyet = 0
+
         for row in rows:
-            item = dict(row)
-            item["ortalama_satis_fiyat"] = item["ortalama_satis_fiyat"] or 0
-            item["birim_maliyet"] = item["birim_maliyet"] or 0
-            analiz.append(item)
+            u_adi = row["urun_adi"]
+            adet = row["toplam_adet"]
+            
+            # Eğer sabit değerler tablomuzda varsa onları kullan, yoksa 0 (veya DB'den hesapla)
+            if u_adi in FIXED_VALUES:
+                b_maliyet = FIXED_VALUES[u_adi]["maliyet"]
+                b_satis = FIXED_VALUES[u_adi]["satis"]
+            else:
+                b_maliyet = 0
+                b_satis = 0
+
+            analiz.append({
+                "urun_adi": u_adi,
+                "ortalama_satis_fiyat": b_satis,
+                "birim_maliyet": b_maliyet
+            })
+
+            toplam_ciro += (adet * b_satis)
+            toplam_maliyet += (adet * b_maliyet)
 
         net_kar = toplam_ciro - toplam_maliyet
         brut_kar_marji = (net_kar / toplam_ciro * 100) if toplam_ciro > 0 else 0
