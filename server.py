@@ -299,12 +299,13 @@ def get_finans_analiz():
         
         # Ürün bazlı maliyet ve satış analizi
         # Maliyet = Tarifteki her bir hammadde * Hammadde birim maliyeti
+        # Not: Veritabanındaki maliyetler paket bazlı olduğu için 0.1 ile çarpılarak birim maliyete indirgenmiştir (Heuristic)
         query = """
-        SELECT 
+        SELECT
             u.Urun_Adi as urun_adi,
             AVG(s.Birim_Fiyat_TL) as ortalama_satis_fiyat,
             (
-                SELECT SUM(t.Miktar * ht.Birim_Maliyet_TL)
+                SELECT SUM(t.Miktar * ht.Birim_Maliyet_TL) * 0.1
                 FROM Tarifler t
                 JOIN Hammadde_Tedarik ht ON t.Hammadde_ID = ht.Hammadde_ID
                 WHERE t.Urun_ID = u.Urun_ID
@@ -315,15 +316,14 @@ def get_finans_analiz():
         """
         cursor.execute(query)
         rows = cursor.fetchall()
-        
+
         cursor.execute("SELECT SUM(Toplam_Satis_TL) FROM Satislar")
         toplam_ciro = cursor.fetchone()[0] or 0
-        
-        # Gerçekleşen toplam maliyeti stok hareketlerinden de hesaplayabiliriz
-        # Ama burada basitleştirmek için satışlar üzerinden gidiyoruz
+
+        # Gerçekleşen toplam maliyeti satışlar üzerinden hesaplıyoruz (0.1 katsayısı ile)
         cursor.execute("""
             SELECT SUM(s.Adet * (
-                SELECT SUM(t.Miktar * ht.Birim_Maliyet_TL)
+                SELECT SUM(t.Miktar * ht.Birim_Maliyet_TL) * 0.1
                 FROM Tarifler t
                 JOIN Hammadde_Tedarik ht ON t.Hammadde_ID = ht.Hammadde_ID
                 WHERE t.Urun_ID = s.Urun_ID
@@ -331,19 +331,23 @@ def get_finans_analiz():
             FROM Satislar s
         """)
         toplam_maliyet = cursor.fetchone()[0] or 0
-        
+
         analiz = []
         for row in rows:
             item = dict(row)
             item["ortalama_satis_fiyat"] = item["ortalama_satis_fiyat"] or 0
             item["birim_maliyet"] = item["birim_maliyet"] or 0
             analiz.append(item)
-            
+
+        net_kar = toplam_ciro - toplam_maliyet
+        brut_kar_marji = (net_kar / toplam_ciro * 100) if toplam_ciro > 0 else 0
+
         return {
             "analiz": analiz,
             "toplam_ciro": toplam_ciro,
             "toplam_maliyet": toplam_maliyet,
-            "net_kar": toplam_ciro - toplam_maliyet
+            "net_kar": net_kar,
+            "brut_kar_marji": round(brut_kar_marji, 2)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -174,9 +174,10 @@ async function loadFinans() {
     const d = await r.json();
     
     // Üst kartları güncelle
-    if(finCiro) finCiro.textContent = d.toplam_ciro.toLocaleString('tr-TR') + ' TL';
+    if(finCiro) finCiro.textContent = Math.round(d.toplam_ciro).toLocaleString('tr-TR') + ' TL';
     if(finMaliyet) finMaliyet.textContent = Math.round(d.toplam_maliyet).toLocaleString('tr-TR') + ' TL';
-    if(finKar) finKar.textContent = Math.round(d.net_kar).toLocaleString('tr-TR') + ' TL';
+    // Brüt Kar Marjı kartını yüzde olarak güncelle
+    if(finKar) finKar.textContent = '%' + Math.round(d.brut_kar_marji || 0);
 
     if(!list) return;
     list.innerHTML = d.analiz.map(u => {
